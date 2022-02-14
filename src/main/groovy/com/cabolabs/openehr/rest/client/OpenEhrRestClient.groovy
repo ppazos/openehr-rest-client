@@ -188,6 +188,48 @@ class OpenEhrRestClient {
          //println post.getInputStream().getText()
       }
    }
+
+   /**
+    * Creates an EHR ith the given EHR_STATUS and ehr_id
+    */
+   Ehr createEhr(EhrStatus ehr_status, String ehr_id)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      def post = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
+
+      def serializer = new OpenEhrJsonSerializer()
+      def body = serializer.serializeEhrStatus(ehr_status)
+
+      post.setRequestMethod("PUT")
+      post.setDoOutput(true)
+
+      post.setRequestProperty("Content-Type", "application/json") // add to send a status
+      post.setRequestProperty("Prefer", "return=representation")
+      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      post.getOutputStream().write(body.getBytes("UTF-8"));
+      def status = post.getResponseCode()
+
+      if (status.equals(201))
+      {
+         def response_body = post.getInputStream().getText()
+         //def json_parser = new JsonSlurper()
+         //def ehr = json_parser.parseText(response_body)
+         def parser = new OpenEhrJsonParser()
+         //println response_body
+         def ehr = parser.parseEhr(response_body)
+         return ehr
+      }
+      else
+      {
+         //println post.getInputStream().getText()
+      }
+   }
     
    static String removeBOM(byte[] bytes)
    {

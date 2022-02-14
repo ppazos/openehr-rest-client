@@ -52,16 +52,21 @@ class OpenEhrRestClientTest extends Specification {
          status.archetype_node_id = "openEHR-EHR-EHR_STATUS.generic.v1"
          status.is_modifiable = is_modifiable
          status.is_queryable = is_queryable
-         status.subject = new PartySelf(
-            external_ref: new PartyRef(
-               namespace: "DEMOGRAPHIC",
-               type: "PERSON",
-               id: new GenericId(
-                  value: subject_id,
-                  scheme: "CABOLABS_MPI"
+
+         if (subject_id)
+         {
+            status.subject = new PartySelf(
+               external_ref: new PartyRef(
+                  namespace: "DEMOGRAPHIC",
+                  type: "PERSON",
+                  id: new GenericId(
+                     value: subject_id,
+                     scheme: "CABOLABS_MPI"
+                  )
                )
             )
-         )
+         }
+         
          def ehr
          
          if (ehr_id)
@@ -84,10 +89,22 @@ class OpenEhrRestClientTest extends Specification {
          ehr.ehr_status.type == 'EHR_STATUS'
 
       where:
-         is_queryable | is_modifiable | subject_id | other_details | ehr_id
-         true         | true          | '12345'    | null          | null
-         true         | false         | '12345'    | null          | null
-         false        | true          | '12345'    | null          | null
-         false        | false         | '12345'    | null          | null
+         data_set_no | is_queryable | is_modifiable | subject_id | other_details | ehr_id
+         1           | true         | true          | '12345'    | null          | null
+         2           | true         | false         | '12345'    | null          | null
+         3           | false        | true          | '12345'    | null          | null
+         4           | false        | false         | '12345'    | null          | null
+         9           | true         | true          | '12345'    | null          | '11111'
+         10          | true         | false         | '12345'    | null          | '22222'
+         11          | false        | true          | '12345'    | null          | '33333'
+         12          | false        | false         | '12345'    | null          | '44444'
+         17          | true         | true          | null       | null          | null
+         18          | true         | false         | null       | null          | null
+         19          | false        | true          | null       | null          | null
+         20          | false        | false         | null       | null          | null
+         25          | true         | true          | null       | null          | '55555'
+         26          | true         | false         | null       | null          | '66666'
+         27          | false        | true          | null       | null          | '77777'
+         28          | false        | false         | null       | null          | '88888'
    }
 }
