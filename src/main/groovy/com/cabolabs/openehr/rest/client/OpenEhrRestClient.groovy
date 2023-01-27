@@ -1,6 +1,7 @@
 package com.cabolabs.openehr.rest.client
 
 import com.cabolabs.openehr.rm_1_0_2.ehr.*
+import com.cabolabs.openehr.dto_1_0_2.ehr.EhrDto
 
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
@@ -13,7 +14,6 @@ import java.io.InputStream
 import net.pempek.unicode.UnicodeBOMInputStream
 import org.apache.log4j.*
 import groovy.util.logging.*
-import com.cabolabs.openehr.rm_1_0_2.ehr.EhrStatus
 import java.nio.charset.StandardCharsets
 import com.cabolabs.openehr.formats.OpenEhrJsonSerializer
 
@@ -24,6 +24,7 @@ class OpenEhrRestClient {
    String baseUrl // = 'http://192.168.1.110:8080/ehrbase/rest/openehr/v1'
    String baseAuthUrl
    String token
+   Map lastError = [:] // parsed JSON that contains an error response
 
    OpenEhrRestClient (String baseUrl, String baseAuthUrl)
    {
@@ -53,7 +54,7 @@ class OpenEhrRestClient {
       String params = "email=${user}&password=${pass}&format=json"
       byte[] postData = params.getBytes(StandardCharsets.UTF_8)
       post.setRequestProperty("Content-Length", Integer.toString(postData.length))
-      
+
 
       try
       {
@@ -93,64 +94,63 @@ class OpenEhrRestClient {
     * Creates a default EHR, no payload was provided and returns the full representation of the EHR created.
     * @return EHR created.
     */
-   Ehr createEhr()
+   EhrDto createEhr()
    {
       if (!this.token)
       {
          throw new Exception("Not authenticated")
       }
-      /*
+
+      def post = new URL(this.baseUrl +"/ehr").openConnection()
+      def body = '' // '{"message":"this is a message"}' // add to send a status
+
+      post.setRequestMethod("POST")
+      post.setDoOutput(true)
+
+      //post.setRequestProperty("Content-Type", "application/json") // add to send a status
+      post.setRequestProperty("Prefer", "return=representation")
+      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // required commiter header
+      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
+
+      String response_body
+
       try
       {
-         */
-         def post = new URL(this.baseUrl +"/ehr").openConnection()
-         def body = '' // '{"message":"this is a message"}' // add to send a status
-
-         post.setRequestMethod("POST")
-         post.setDoOutput(true)
-
-         //post.setRequestProperty("Content-Type", "application/json") // add to send a status
-         post.setRequestProperty("Prefer", "return=representation")
-         post.setRequestProperty("Accept", "application/json")
-         post.setRequestProperty("Authorization", "Bearer "+ this.token)
-
-         //post.getOutputStream().write(body.getBytes("UTF-8"));
-         def status = post.getResponseCode()
-
-         if (status.equals(201))
-         {
-            def response_body = post.getInputStream().getText()
-            //def json_parser = new JsonSlurper()
-            //def ehr = json_parser.parseText(response_body)
-            def parser = new OpenEhrJsonParser()
-            def ehr = parser.parseEhr(response_body)
-            return ehr
-
-            /*
-            // register the ehr_id for later commits
-            ehr_ids << ehr.ehr_id.value
-
-            return true
-            */
-         }
-         else
-         {
-            //println post.getInputStream().getText()
-         }
-      /*
+         // this throws an exception if the response status code is not 2xx
+         response_body = post.getInputStream().getText()
       }
-      catch (Exception e) // connection issues or parsing the ehr, etc
+      catch (Exception e)
       {
-         println e.message
-         return false
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = post.getErrorStream().getText()
       }
-      */
+
+      def status = post.getResponseCode()
+
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
+      if (status.equals(201))
+      {
+         def parser = new OpenEhrJsonParser()
+         def ehr = parser.parseEhrDto(response_body)
+         return ehr
+      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+      return null // no ehr is returned if there is an error
    }
 
    /**
     * Creates an EHR ith the given EHR_STATUS
     */
-   Ehr createEhr(EhrStatus ehr_status)
+   EhrDto createEhr(EhrStatus ehr_status)
    {
       if (!this.token)
       {
@@ -160,7 +160,7 @@ class OpenEhrRestClient {
       def post = new URL(this.baseUrl +"/ehr").openConnection()
 
       def serializer = new OpenEhrJsonSerializer()
-      def body = serializer.serializeEhrStatus(ehr_status)
+      def body = serializer.serialize(ehr_status)
 
       post.setRequestMethod("POST")
       post.setDoOutput(true)
@@ -170,29 +170,48 @@ class OpenEhrRestClient {
       post.setRequestProperty("Accept", "application/json")
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
+      // required commiter header
+      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
+
       post.getOutputStream().write(body.getBytes("UTF-8"));
+
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = post.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = post.getErrorStream().getText()
+      }
+
       def status = post.getResponseCode()
 
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(201))
       {
-         def response_body = post.getInputStream().getText()
-         //def json_parser = new JsonSlurper()
-         //def ehr = json_parser.parseText(response_body)
          def parser = new OpenEhrJsonParser()
-         //println response_body
-         def ehr = parser.parseEhr(response_body)
+         def ehr = parser.parseEhrDto(response_body)
          return ehr
       }
-      else
-      {
-         //println post.getInputStream().getText()
-      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+      return null // no ehr is returned if there is an error
    }
 
    /**
     * Creates an EHR ith the given EHR_STATUS and ehr_id
     */
-   Ehr createEhr(EhrStatus ehr_status, String ehr_id)
+   EhrDto createEhr(EhrStatus ehr_status, String ehr_id)
    {
       if (!this.token)
       {
@@ -202,7 +221,7 @@ class OpenEhrRestClient {
       def post = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
       def serializer = new OpenEhrJsonSerializer()
-      def body = serializer.serializeEhrStatus(ehr_status)
+      def body = serializer.serialize(ehr_status)
 
       post.setRequestMethod("PUT")
       post.setDoOutput(true)
@@ -212,25 +231,29 @@ class OpenEhrRestClient {
       post.setRequestProperty("Accept", "application/json")
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
+      // required commiter header
+      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
+
       post.getOutputStream().write(body.getBytes("UTF-8"));
       def status = post.getResponseCode()
 
+      String response_body = post.getInputStream().getText()
+
       if (status.equals(201))
       {
-         def response_body = post.getInputStream().getText()
-         //def json_parser = new JsonSlurper()
-         //def ehr = json_parser.parseText(response_body)
          def parser = new OpenEhrJsonParser()
          //println response_body
-         def ehr = parser.parseEhr(response_body)
+         def ehr = parser.parseEhrDto(response_body)
          return ehr
       }
-      else
-      {
-         //println post.getInputStream().getText()
-      }
+
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+      return null // no ehr is returned if there is an error
    }
-    
+
    static String removeBOM(byte[] bytes)
    {
       def inputStream = new ByteArrayInputStream(bytes)

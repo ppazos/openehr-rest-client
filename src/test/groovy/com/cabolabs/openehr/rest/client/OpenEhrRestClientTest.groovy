@@ -10,11 +10,15 @@ import com.cabolabs.openehr.rm_1_0_2.support.identification.PartyRef
 import com.cabolabs.openehr.rm_1_0_2.common.generic.PartySelf
 import com.cabolabs.openehr.rm_1_0_2.ehr.EhrStatus
 import com.cabolabs.openehr.rm_1_0_2.data_types.text.DvText
+import com.cabolabs.openehr.rm_1_0_2.common.archetyped.*
+import com.cabolabs.openehr.rm_1_0_2.support.identification.*
 
 
 class OpenEhrRestClientTest extends Specification {
 
-   def client
+   static def client
+
+   static boolean auth = false
 
    def setup()
    {
@@ -27,8 +31,14 @@ class OpenEhrRestClientTest extends Specification {
 
       //println properties.sut_api_url
 
-      this.client = new OpenEhrRestClient(properties.sut_api_url, properties.sut_api_auth_url)
-      this.client.auth("admin@cabolabs.com", "admin") // TODO: set on config file
+      // run auth once
+      if (!auth)
+      {
+         client = new OpenEhrRestClient(properties.sut_api_url, properties.sut_api_auth_url)
+         client.auth("admin@cabolabs.com", "admin") // TODO: set on config file
+
+         auth = true
+      }
    }
 
    def "B.1.a. create ehr no payload"()
@@ -48,10 +58,19 @@ class OpenEhrRestClientTest extends Specification {
    {
       when:
          def status = new EhrStatus()
-         status.name = new DvText(value:"EHR Status")
+         status.name = new DvText(value:"Generic Status")
          status.archetype_node_id = "openEHR-EHR-EHR_STATUS.generic.v1"
          status.is_modifiable = is_modifiable
          status.is_queryable = is_queryable
+         status.archetype_details = new Archetyped(
+            rm_version: '1.0.2',
+            archetype_id: new ArchetypeId(
+               value: "openEHR-EHR-EHR_STATUS.generic.v1"
+            ),
+            template_id: new TemplateId(
+               value: "ehr_status_any_en_v1"
+            )
+         )
 
          if (subject_id)
          {
@@ -66,12 +85,12 @@ class OpenEhrRestClientTest extends Specification {
                )
             )
          }
-         
+
          def ehr
-         
+
          if (ehr_id)
          {
-            ehr = client.createEhr(status, ehr_id) // TODO
+            ehr = client.createEhr(status, ehr_id) // TODO: not supported by the API yet
          }
          else
          {
@@ -81,30 +100,40 @@ class OpenEhrRestClientTest extends Specification {
          // TODO: add ehr_status.other_details
 
       then:
-         ehr != null
-         ehr.ehr_status != null
+         if (expected_error_code)
+         {
+            def error = client.lastError
+            error.code == expected_error_code
+         }
+         else
+         {
+            ehr != null
+            ehr.ehr_status != null
 
-         // ehr_status is an object_ref
-         ehr.ehr_status.id != null
-         ehr.ehr_status.type == 'EHR_STATUS'
+            // ehr_status is an object_ref
+            ehr.ehr_status.uid != null
+            ehr.ehr_status.subject.external_ref.id.value == subject_id
+         }
 
+
+      // FIXME: cases with given ehr_id are not yet tested because are not yet supported by the API
       where:
-         data_set_no | is_queryable | is_modifiable | subject_id | other_details | ehr_id
-         1           | true         | true          | '12345'    | null          | null
-         2           | true         | false         | '12345'    | null          | null
-         3           | false        | true          | '12345'    | null          | null
-         4           | false        | false         | '12345'    | null          | null
-         9           | true         | true          | '12345'    | null          | '11111'
-         10          | true         | false         | '12345'    | null          | '22222'
-         11          | false        | true          | '12345'    | null          | '33333'
-         12          | false        | false         | '12345'    | null          | '44444'
-         17          | true         | true          | null       | null          | null
-         18          | true         | false         | null       | null          | null
-         19          | false        | true          | null       | null          | null
-         20          | false        | false         | null       | null          | null
-         25          | true         | true          | null       | null          | '55555'
-         26          | true         | false         | null       | null          | '66666'
-         27          | false        | true          | null       | null          | '77777'
-         28          | false        | false         | null       | null          | '88888'
+         data_set_no | is_queryable | is_modifiable | subject_id | other_details | ehr_id  | expected_error_code                    | error_description
+         1           | true         | true          | '12345'    | null          | null    | null                                   | null
+         2           | true         | false         | '12345'    | null          | null    | null                                   | null
+         3           | false        | true          | '12345'    | null          | null    | null                                   | null
+         4           | false        | false         | '12345'    | null          | null    | null                                   | null
+         //9           | true         | true          | '12345'    | null          | '11111' | null                                   | null
+         //10          | true         | false         | '12345'    | null          | '22222' | null                                   | null
+         //11          | false        | true          | '12345'    | null          | '33333' | null                                   | null
+         //12          | false        | false         | '12345'    | null          | '44444' | null                                   | null
+         17          | true         | true          | null       | null          | null    | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         18          | true         | false         | null       | null          | null    | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         19          | false        | true          | null       | null          | null    | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         20          | false        | false         | null       | null          | null    | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         //25          | true         | true          | null       | null          | '55555' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         //26          | true         | false         | null       | null          | '66666' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         //27          | false        | true          | null       | null          | '77777' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         //28          | false        | false         | null       | null          | '88888' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
    }
 }
