@@ -5,14 +5,13 @@ package com.cabolabs.openehr.rest.client
 
 import spock.lang.Specification
 
-import com.cabolabs.openehr.rm_1_0_2.support.identification.GenericId
-import com.cabolabs.openehr.rm_1_0_2.support.identification.PartyRef
-import com.cabolabs.openehr.rm_1_0_2.common.generic.PartySelf
-import com.cabolabs.openehr.rm_1_0_2.ehr.EhrStatus
-import com.cabolabs.openehr.rm_1_0_2.data_types.text.DvText
-import com.cabolabs.openehr.rm_1_0_2.common.archetyped.*
 import com.cabolabs.openehr.rm_1_0_2.support.identification.*
-
+import com.cabolabs.openehr.rm_1_0_2.ehr.EhrStatus
+import com.cabolabs.openehr.rm_1_0_2.data_types.text.*
+import com.cabolabs.openehr.rm_1_0_2.data_structures.item_structure.ItemTree
+import com.cabolabs.openehr.rm_1_0_2.data_structures.item_structure.representation.Element
+import com.cabolabs.openehr.rm_1_0_2.common.archetyped.*
+import com.cabolabs.openehr.rm_1_0_2.common.generic.PartySelf
 
 class OpenEhrRestClientTest extends Specification {
 
@@ -29,8 +28,6 @@ class OpenEhrRestClientTest extends Specification {
          properties.load(it)
       }
 
-      //println properties.sut_api_url
-
       // run auth once
       if (!auth)
       {
@@ -41,19 +38,24 @@ class OpenEhrRestClientTest extends Specification {
       }
    }
 
+
    def "B.1.a. create ehr no payload"()
    {
-      //setup:
-      //   def client = new OpenEhrRestClient("http://localhost:8090/openehr/v1", "http://localhost:8090/rest/v1")
-
       when:
          def ehr = client.createEhr()
 
       then:
          ehr != null
          ehr.ehr_status != null
+
+         // TODO: call cleanup
    }
 
+
+   /**
+    * Test EHR creation with all possible combinations of valid EHR_STATUS.
+    * This test case doesn't focus on data validation against OPT constraints.
+    */
    def "B.1.a. create ehr with payload"()
    {
       when:
@@ -72,17 +74,45 @@ class OpenEhrRestClientTest extends Specification {
             )
          )
 
+         // subject is mandatory in the RM, subject.external_ref is optional
+         status.subject = new PartySelf()
+
          if (subject_id)
          {
-            status.subject = new PartySelf(
-               external_ref: new PartyRef(
-                  namespace: "DEMOGRAPHIC",
-                  type: "PERSON",
-                  id: new GenericId(
-                     value: subject_id,
-                     scheme: "CABOLABS_MPI"
-                  )
+            status.subject.external_ref = new PartyRef(
+               namespace: "DEMOGRAPHIC",
+               type: "PERSON",
+               id: new GenericId(
+                  value: subject_id,
+                  scheme: "CABOLABS_MPI"
                )
+            )
+         }
+
+         if (other_details)
+         {
+            status.other_details = new ItemTree(
+               name: new DvText(
+                  value: "tree"
+               ),
+               archetype_node_id: 'at0001',
+               items: [
+                  new Element(
+                     name: new DvText(
+                        value: "coded"
+                     ),
+                     archetype_node_id: 'at0002',
+                     value: new DvCodedText(
+                        value: 'some value',
+                        defining_code: new CodePhrase(
+                           code_string: '55501',
+                           terminology_id: new TerminologyId(
+                              value: 'coolterm'
+                           )
+                        )
+                     )
+                  )
+               ]
             )
          }
 
@@ -100,6 +130,8 @@ class OpenEhrRestClientTest extends Specification {
          // TODO: add ehr_status.other_details
 
       then:
+         if (!ehr) println client.lastError
+
          if (expected_error_code)
          {
             def error = client.lastError
@@ -112,28 +144,55 @@ class OpenEhrRestClientTest extends Specification {
 
             // ehr_status is an object_ref
             ehr.ehr_status.uid != null
-            ehr.ehr_status.subject.external_ref.id.value == subject_id
+
+            if (subject_id)
+            {
+               ehr.ehr_status.subject.external_ref.id.value == subject_id
+            }
          }
+
+         // TODO: call cleanup
 
 
       // FIXME: cases with given ehr_id are not yet tested because are not yet supported by the API
+      // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
       where:
          data_set_no | is_queryable | is_modifiable | subject_id | other_details | ehr_id  | expected_error_code                    | error_description
-         1           | true         | true          | '12345'    | null          | null    | null                                   | null
-         2           | true         | false         | '12345'    | null          | null    | null                                   | null
-         3           | false        | true          | '12345'    | null          | null    | null                                   | null
-         4           | false        | false         | '12345'    | null          | null    | null                                   | null
-         //9           | true         | true          | '12345'    | null          | '11111' | null                                   | null
-         //10          | true         | false         | '12345'    | null          | '22222' | null                                   | null
-         //11          | false        | true          | '12345'    | null          | '33333' | null                                   | null
-         //12          | false        | false         | '12345'    | null          | '44444' | null                                   | null
-         17          | true         | true          | null       | null          | null    | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         18          | true         | false         | null       | null          | null    | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         19          | false        | true          | null       | null          | null    | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         20          | false        | false         | null       | null          | null    | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         1           | true         | true          | '11111'    | null          | null    | null                                   | null
+         2           | true         | false         | '22222'    | null          | null    | null                                   | null
+         3           | false        | true          | '33333'    | null          | null    | null                                   | null
+         4           | false        | false         | '44444'    | null          | null    | null                                   | null
+         5           | true         | true          | '55555'    | true          | null    | null                                   | null
+         6           | true         | false         | '66666'    | true          | null    | null                                   | null
+         7           | false        | true          | '77777'    | true          | null    | null                                   | null
+         8           | false        | false         | '88888'    | true          | null    | null                                   | null
+
+         //9           | true         | true          | '99999'    | null          | '11111' | null                                   | null
+         //10          | true         | false         | '101010'    | null          | '22222' | null                                   | null
+         //11          | false        | true          | '111111'    | null          | '33333' | null                                   | null
+         //12          | false        | false         | '121212'    | null          | '44444' | null                                   | null
+         // 13          | true         | true          | '131313'    | true          | '55555' | null                                   | null
+         // 14          | true         | false         | '141414'    | true          | '66666' | null                                   | null
+         // 15          | false        | true          | '151515'    | true          | '77777' | null                                   | null
+         // 16          | false        | false         | '161616'    | true          | '88888' | null
+
+         17          | true         | true          | null       | null          | null    | null | null
+         18          | true         | false         | null       | null          | null    | null | null
+         19          | false        | true          | null       | null          | null    | null | null
+         20          | false        | false         | null       | null          | null    | null | null
+
+         21          | true         | true          | null       | true          | null    | null                                   | null
+         22          | true         | false         | null       | true          | null    | null                                   | null
+         23          | false        | true          | null       | true          | null    | null                                   | null
+         24          | false        | false         | null       | true          | null    | null                                   | null
+
          //25          | true         | true          | null       | null          | '55555' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
          //26          | true         | false         | null       | null          | '66666' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
          //27          | false        | true          | null       | null          | '77777' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
          //28          | false        | false         | null       | null          | '88888' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         //29          | true         | true          | null       | true          | '55555' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         //30          | true         | false         | null       | true          | '66666' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         //31          | false        | true          | null       | true          | '77777' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+         //32          | false        | false         | null       | true          | '88888' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
    }
 }
