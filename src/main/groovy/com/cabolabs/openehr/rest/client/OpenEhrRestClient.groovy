@@ -23,13 +23,18 @@ class OpenEhrRestClient {
 
    String baseUrl // = 'http://192.168.1.110:8080/ehrbase/rest/openehr/v1'
    String baseAuthUrl
+   String baseAdminUrl
    String token
    Map lastError = [:] // parsed JSON that contains an error response
 
-   OpenEhrRestClient (String baseUrl, String baseAuthUrl)
+   // TODO: refactor to share common code
+   // TODO: parametrized committer header values
+
+   OpenEhrRestClient (String baseUrl, String baseAuthUrl, String baseAdminUrl)
    {
       this.baseUrl = baseUrl
       this.baseAuthUrl = baseAuthUrl
+      this.baseAdminUrl = baseAdminUrl
    }
 
    // auth using the auth service of the same REST API, which returns a JWT access token
@@ -90,6 +95,23 @@ class OpenEhrRestClient {
       }
    }
 
+   private String do_create_ehr_request(EhrStatus ehr_status, String ehr_id)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      // prepare the POST or PUT uri
+
+      def uri = this.baseUrl +"/ehr"
+
+      if (ehr_id)
+      {
+         uri += "/"+ ehr_id
+      }
+   }
+
    /**
     * Creates a default EHR, no payload was provided and returns the full representation of the EHR created.
     * @return EHR created.
@@ -102,12 +124,61 @@ class OpenEhrRestClient {
       }
 
       def post = new URL(this.baseUrl +"/ehr").openConnection()
-      def body = '' // '{"message":"this is a message"}' // add to send a status
 
       post.setRequestMethod("POST")
       post.setDoOutput(true)
 
-      //post.setRequestProperty("Content-Type", "application/json") // add to send a status
+      post.setRequestProperty("Prefer", "return=representation")
+      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // required commiter header
+      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = post.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = post.getErrorStream().getText()
+      }
+
+      def status = post.getResponseCode()
+
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
+      if (status.equals(201))
+      {
+         def parser = new OpenEhrJsonParser()
+         def ehr = parser.parseEhrDto(response_body)
+         return ehr
+      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+      return null // no ehr is returned if there is an error
+   }
+
+   EhrDto createEhr(String ehr_id)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      def post = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
+
+      post.setRequestMethod("PUT")
+      post.setDoOutput(true)
+
       post.setRequestProperty("Prefer", "return=representation")
       post.setRequestProperty("Accept", "application/json")
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
@@ -238,7 +309,17 @@ class OpenEhrRestClient {
       post.getOutputStream().write(body.getBytes("UTF-8"));
       def status = post.getResponseCode()
 
-      String response_body = post.getInputStream().getText()
+      String response_body
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = post.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = post.getErrorStream().getText()
+      }
 
       if (status.equals(201))
       {
@@ -261,5 +342,13 @@ class OpenEhrRestClient {
       bomInputStream.skipBOM() // NOP if no BOM is detected
       def br = new BufferedReader(new InputStreamReader(bomInputStream))
       return br.text // http://docs.groovy-lang.org/latest/html/groovy-jdk/java/io/BufferedReader.html#getText()
+   }
+
+   def truncateServer()
+   {
+      def req = new URL(this.baseAdminUrl +"/truncate_all").openConnection()
+      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+      int code = req.getResponseCode()
+      //req.getInputStream().getText()
    }
 }

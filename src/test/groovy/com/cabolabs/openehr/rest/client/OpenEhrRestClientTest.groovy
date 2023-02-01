@@ -4,6 +4,7 @@
 package com.cabolabs.openehr.rest.client
 
 import spock.lang.Specification
+import spock.lang.Unroll
 
 import com.cabolabs.openehr.rm_1_0_2.support.identification.*
 import com.cabolabs.openehr.rm_1_0_2.ehr.EhrStatus
@@ -31,7 +32,11 @@ class OpenEhrRestClientTest extends Specification {
       // run auth once
       if (!auth)
       {
-         client = new OpenEhrRestClient(properties.sut_api_url, properties.sut_api_auth_url)
+         client = new OpenEhrRestClient(
+            properties.sut_api_url,
+            properties.sut_api_auth_url,
+            properties.sut_api_admin_url
+         )
          client.auth("admin@cabolabs.com", "admin") // TODO: set on config file
 
          auth = true
@@ -39,26 +44,97 @@ class OpenEhrRestClientTest extends Specification {
    }
 
 
-   def "B.1.a. create ehr no payload"()
-   {
-      when:
-         def ehr = client.createEhr()
+   // def "B.1.a. create ehr no payload"()
+   // {
+   //    when:
+   //       def ehr = client.createEhr()
 
-      then:
-         ehr != null
-         ehr.ehr_status != null
+   //    then:
+   //       ehr != null
+   //       ehr.ehr_status != null
 
-         // TODO: call cleanup
-   }
+   //       // TODO: call cleanup
+   // }
 
 
    /**
     * Test EHR creation with all possible combinations of valid EHR_STATUS.
     * This test case doesn't focus on data validation against OPT constraints.
     */
-   def "B.1.a. create ehr with payload"()
+   @Unroll
+   def "B.1.a. create new ehr"()
    {
       when:
+         def ehr = create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
+
+      then:
+         if (!ehr) println client.lastError
+
+         ehr != null
+         ehr.ehr_status != null
+
+         // ehr_status is an object_ref
+         ehr.ehr_status.uid != null
+
+         if (subject_id)
+         {
+            ehr.ehr_status.subject.external_ref.id.value == subject_id
+         }
+
+      cleanup:
+         // server cleanup
+         client.truncateServer()
+
+
+      // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
+      where:
+         [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
+   }
+
+
+   @Unroll
+   def "B.1.b. create ehr twice"()
+   {
+      // NOTE: if the data set defines a subject_id, it shouldn't be used to avoid making this case fail because of
+      //       the patient already having an EHR, that is tested in the next case B.1.c
+      when:
+         def ehr1 = create_ehr(data_set_no, is_queryable, is_modifiable, has_status, null, other_details, ehr_id)
+
+      then:
+         if (!ehr1) println client.lastError
+
+         ehr1 != null
+         ehr1.ehr_status != null
+
+         // ehr_status is an object_ref
+         ehr1.ehr_status.uid != null
+
+      when:
+         def ehr2 = create_ehr(data_set_no, is_queryable, is_modifiable, has_status, null, other_details, ehr1.ehr_id.value)
+
+      then:
+         ehr2 == null
+         client.lastError.result.code == 'EHRSERVER::API::RESPONSE_CODES::99213'
+         client.lastError.result.message == "EHR with ehr_id ${ehr1.ehr_id.value} already exists, ehr_id must be unique"
+
+
+      cleanup:
+         // server cleanup
+         client.truncateServer()
+
+
+      // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
+      where:
+         [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
+   }
+
+
+   private def create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
+   {
+      def ehr
+
+      if (has_status)
+      {
          def status = new EhrStatus()
          status.name = new DvText(value:"Generic Status")
          status.archetype_node_id = "openEHR-EHR-EHR_STATUS.generic.v1"
@@ -116,8 +192,6 @@ class OpenEhrRestClientTest extends Specification {
             )
          }
 
-         def ehr
-
          if (ehr_id)
          {
             ehr = client.createEhr(status, ehr_id) // TODO: not supported by the API yet
@@ -126,73 +200,60 @@ class OpenEhrRestClientTest extends Specification {
          {
             ehr = client.createEhr(status)
          }
-
-         // TODO: add ehr_status.other_details
-
-      then:
-         if (!ehr) println client.lastError
-
-         if (expected_error_code)
+      }
+      else // without payload
+      {
+         if (ehr_id)
          {
-            def error = client.lastError
-            error.code == expected_error_code
+            ehr = client.createEhr(ehr_id)
          }
          else
          {
-            ehr != null
-            ehr.ehr_status != null
-
-            // ehr_status is an object_ref
-            ehr.ehr_status.uid != null
-
-            if (subject_id)
-            {
-               ehr.ehr_status.subject.external_ref.id.value == subject_id
-            }
+            ehr = client.createEhr()
          }
+      }
 
-         // TODO: call cleanup
+      return ehr
+   }
 
-
-      // FIXME: cases with given ehr_id are not yet tested because are not yet supported by the API
-      // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
-      where:
-         data_set_no | is_queryable | is_modifiable | subject_id | other_details | ehr_id  | expected_error_code                    | error_description
-         1           | true         | true          | '11111'    | null          | null    | null                                   | null
-         2           | true         | false         | '22222'    | null          | null    | null                                   | null
-         3           | false        | true          | '33333'    | null          | null    | null                                   | null
-         4           | false        | false         | '44444'    | null          | null    | null                                   | null
-         5           | true         | true          | '55555'    | true          | null    | null                                   | null
-         6           | true         | false         | '66666'    | true          | null    | null                                   | null
-         7           | false        | true          | '77777'    | true          | null    | null                                   | null
-         8           | false        | false         | '88888'    | true          | null    | null                                   | null
-
-         //9           | true         | true          | '99999'    | null          | '11111' | null                                   | null
-         //10          | true         | false         | '101010'    | null          | '22222' | null                                   | null
-         //11          | false        | true          | '111111'    | null          | '33333' | null                                   | null
-         //12          | false        | false         | '121212'    | null          | '44444' | null                                   | null
-         // 13          | true         | true          | '131313'    | true          | '55555' | null                                   | null
-         // 14          | true         | false         | '141414'    | true          | '66666' | null                                   | null
-         // 15          | false        | true          | '151515'    | true          | '77777' | null                                   | null
-         // 16          | false        | false         | '161616'    | true          | '88888' | null
-
-         17          | true         | true          | null       | null          | null    | null | null
-         18          | true         | false         | null       | null          | null    | null | null
-         19          | false        | true          | null       | null          | null    | null | null
-         20          | false        | false         | null       | null          | null    | null | null
-
-         21          | true         | true          | null       | true          | null    | null                                   | null
-         22          | true         | false         | null       | true          | null    | null                                   | null
-         23          | false        | true          | null       | true          | null    | null                                   | null
-         24          | false        | false         | null       | true          | null    | null                                   | null
-
-         //25          | true         | true          | null       | null          | '55555' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         //26          | true         | false         | null       | null          | '66666' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         //27          | false        | true          | null       | null          | '77777' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         //28          | false        | false         | null       | null          | '88888' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         //29          | true         | true          | null       | true          | '55555' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         //30          | true         | false         | null       | true          | '66666' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         //31          | false        | true          | null       | true          | '77777' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
-         //32          | false        | false         | null       | true          | '88888' | 'EHRSERVER::API::RESPONSE_CODES::5001' | 'missing required subject'
+   static List valid_cases()
+   {
+      // data_set_no | is_queryable | is_modifiable | has_status | subject_id | other_details | ehr_id
+      return [
+         [ null,       true,          true,           false,       null,        null,           null    ],
+         [ null,       true,          true,           false,       null,        null,           '7029bd9b-0295-4313-9dd2-da070223aed0'    ],
+         [ 1,          true,          true,           true,        '11111',     null,           null    ],
+         [ 2,          true,          false,          true,        '22222',     null,           null    ],
+         [ 3,          false,         true,           true,        '33333',     null,           null    ],
+         [ 4,          false,         false,          true,        '44444',     null,           null    ],
+         [ 5,          true,          true,           true,        '55555',     true,           null    ],
+         [ 6,          true,          false,          true,        '66666',     true,           null    ],
+         [ 7,          false,         true,           true,        '77777',     true,           null    ],
+         [ 8,          false,         false,          true,        '88888',     true,           null    ],
+         [ 9,          true,          true,           true,        '99999',     null,           '11109' ],
+         [ 10,         true,          false,          true,        '101010',    null,           '22210' ],
+         [ 11,         false,         true,           true,        '111111',    null,           '33311' ],
+         [ 12,         false,         false,          true,        '121212',    null,           '44412' ],
+         [ 13,         true,          true,           true,        '131313',    true,           '55513' ],
+         [ 14,         true,          false,          true,        '141414',    true,           '66614' ],
+         [ 15,         false,         true,           true,        '151515',    true,           '77715' ],
+         [ 16,         false,         false,          true,        '161616',    true,           '88816' ],
+         [ 17,         true,          true,           true,        null,        null,           null    ],
+         [ 18,         true,          false,          true,        null,        null,           null    ],
+         [ 19,         false,         true,           true,        null,        null,           null    ],
+         [ 20,         false,         false,          true,        null,        null,           null    ],
+         [ 21,         true,          true,           true,        null,        true,           null    ],
+         [ 22,         true,          false,          true,        null,        true,           null    ],
+         [ 23,         false,         true,           true,        null,        true,           null    ],
+         [ 24,         false,         false,          true,        null,        true,           null    ],
+         [ 25,         true,          true,           true,        null,        null,           '111111'],
+         [ 26,         true,          false,          true,        null,        null,           '222222'],
+         [ 27,         false,         true,           true,        null,        null,           '333333'],
+         [ 28,         false,         false,          true,        null,        null,           '444444'],
+         [ 29,         true,          true,           true,        null,        true,           '555555'],
+         [ 30,         true,          false,          true,        null,        true,           '666666'],
+         [ 31,         false,         true,           true,        null,        true,           '777777'],
+         [ 32,         false,         false,          true,        null,        true,           '888888']
+      ]
    }
 }
