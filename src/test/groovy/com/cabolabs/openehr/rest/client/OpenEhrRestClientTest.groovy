@@ -14,6 +14,9 @@ import com.cabolabs.openehr.rm_1_0_2.data_structures.item_structure.representati
 import com.cabolabs.openehr.rm_1_0_2.common.archetyped.*
 import com.cabolabs.openehr.rm_1_0_2.common.generic.PartySelf
 
+import com.cabolabs.openehr.formats.OpenEhrJsonParserQuick
+
+
 class OpenEhrRestClientTest extends Specification {
 
    static def client
@@ -42,19 +45,6 @@ class OpenEhrRestClientTest extends Specification {
          auth = true
       }
    }
-
-
-   // def "B.1.a. create ehr no payload"()
-   // {
-   //    when:
-   //       def ehr = client.createEhr()
-
-   //    then:
-   //       ehr != null
-   //       ehr.ehr_status != null
-
-   //       // TODO: call cleanup
-   // }
 
 
    /**
@@ -255,5 +245,61 @@ class OpenEhrRestClientTest extends Specification {
          [ 31,         false,         true,           true,        null,        true,           '777777'],
          [ 32,         false,         false,          true,        null,        true,           '888888']
       ]
+   }
+
+
+
+
+
+   def "create composition"()
+   {
+      when:
+         String opt        = this.getClass().getResource(File.separator + 'minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource(File.separator + 'minimal_evaluation.en.v1_20230205.json').text
+
+         //println json_compo
+
+         client.uploadTemplate(opt)
+
+         if (client.lastError)
+         {
+            println client.lastError
+         }
+
+         def parser = new OpenEhrJsonParserQuick()
+         def compo = parser.parseJson(json_compo)
+         def ehr = client.createEhr()
+
+         def results = (1..100).collect {
+            client.createComposition(ehr.ehr_id.value, compo)
+         }
+
+         /*
+         def compo_out = client.createComposition(ehr.ehr_id.value, compo)
+
+         println compo_out
+
+         if (!compo_out)
+         {
+            println client.lastError
+         }
+         */
+
+         //client.lastError.result.code == 'EHRSERVER::API::RESPONSE_CODES::99213'
+         //client.lastError.result.message
+
+         //println results
+
+
+      then:
+         results.each {
+            it != null
+         }
+
+
+      cleanup:
+         // server cleanup
+         client.truncateServer()
+
    }
 }
