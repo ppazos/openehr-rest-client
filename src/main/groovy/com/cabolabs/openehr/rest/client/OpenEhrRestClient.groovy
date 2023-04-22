@@ -97,6 +97,7 @@ class OpenEhrRestClient {
       }
    }
 
+   // FIXME: this is not used
    private String do_create_ehr_request(EhrStatus ehr_status, String ehr_id)
    {
       if (!this.token)

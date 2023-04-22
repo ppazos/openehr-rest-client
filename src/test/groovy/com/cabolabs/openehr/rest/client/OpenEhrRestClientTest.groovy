@@ -42,7 +42,7 @@ class OpenEhrRestClientTest extends Specification {
          )
          client.auth("admin@cabolabs.com", "admin") // TODO: set on config file
 
-         auth = true
+         auth = true // TODO: actually check the auth result is OK
       }
    }
 
@@ -91,8 +91,6 @@ class OpenEhrRestClientTest extends Specification {
          def ehr1 = create_ehr(data_set_no, is_queryable, is_modifiable, has_status, null, other_details, ehr_id)
 
       then:
-         if (!ehr1) println client.lastError
-
          ehr1 != null
          ehr1.ehr_status != null
 
@@ -261,10 +259,10 @@ class OpenEhrRestClientTest extends Specification {
 
          client.uploadTemplate(opt)
 
-         if (client.lastError)
-         {
-            println client.lastError
-         }
+         // if (client.lastError)
+         // {
+         //    println client.lastError
+         // }
 
          def parser = new OpenEhrJsonParserQuick()
          def compo = parser.parseJson(json_compo)
