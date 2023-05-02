@@ -28,15 +28,45 @@ class OpenEhrRestClient {
    String baseAdminUrl
    String token
    Map lastError = [:] // parsed JSON that contains an error response
+   Map headers = [:] // extra headers to use in the POST endpoints like committer
 
    // TODO: refactor to share common code
-   // TODO: parametrized committer header values
 
    OpenEhrRestClient (String baseUrl, String baseAuthUrl, String baseAdminUrl)
    {
       this.baseUrl = baseUrl
       this.baseAuthUrl = baseAuthUrl
       this.baseAdminUrl = baseAdminUrl
+   }
+
+   // value example: 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"'
+   // see https://specifications.openehr.org/releases/ITS-REST/Release-1.0.2/overview.html#design-considerations-http-headers
+   def setCommitterHeader(String value)
+   {
+      // TODO: add a header object so we can validate it's required contents,
+      // with a string the user can set anything...
+      this.headers["openEHR-AUDIT_DETAILS.committer"] = value
+   }
+
+   // value example: code_string="532"
+   // see https://specifications.openehr.org/releases/ITS-REST/Release-1.0.2/overview.html#design-considerations-http-headers
+   def setLifecycleStateHeader(String value)
+   {
+      this.headers["openEHR-VERSION.lifecycle_state"] = value
+   }
+
+   // value example: code_string="251"
+   // see https://specifications.openehr.org/releases/ITS-REST/Release-1.0.2/overview.html#design-considerations-http-headers
+   def setChangeTypeHeader(String value)
+   {
+      this.headers["openEHR-AUDIT_DETAILS.change_type"] = value
+   }
+
+   // value example: value="An updated composition contribution description"
+   // see https://specifications.openehr.org/releases/ITS-REST/Release-1.0.2/overview.html#design-considerations-http-headers
+   def setDescriptionHeader(String value)
+   {
+      this.headers["openEHR-AUDIT_DETAILS.description"] = value
    }
 
    // auth using the auth service of the same REST API, which returns a JWT access token
@@ -136,7 +166,13 @@ class OpenEhrRestClient {
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
-      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
 
 
       String response_body
@@ -187,7 +223,12 @@ class OpenEhrRestClient {
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
-      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
 
 
       String response_body
@@ -245,7 +286,13 @@ class OpenEhrRestClient {
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
-      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
 
 
       post.getOutputStream().write(body.getBytes("UTF-8"));
@@ -306,7 +353,13 @@ class OpenEhrRestClient {
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
-      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
 
 
       post.getOutputStream().write(body.getBytes("UTF-8"));
@@ -359,8 +412,13 @@ class OpenEhrRestClient {
 
 
       // required commiter header
-      // FIXME: configurable committer headers
-      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
 
 
       // NOTE: JSON only requests for now
@@ -425,9 +483,7 @@ class OpenEhrRestClient {
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
 
-      // required commiter header
-      // FIXME: configurable committer headers
-      //req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+      // TODO: Need some AUDIT for uploading OPTs..
 
 
       // NOTE: JSON only requests for now
@@ -471,6 +527,27 @@ class OpenEhrRestClient {
       return null // no compo is returned if there is an error
    }
 
+
+   /**
+   getEhr
+   updateEhrStatus
+   getComposition
+   updateComposition
+   createActor
+   updateActor
+   getActor
+   createRelationship
+   updateRelationship
+   getRelationship
+   createDirectory
+   updateDirectory
+   getDirectory
+   createContribution
+   getContribution
+   getVersionedComposition
+   ...
+   executeStoredQuery
+   */
 
    static String removeBOM(byte[] bytes)
    {

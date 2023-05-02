@@ -40,6 +40,10 @@ class OpenEhrRestClientTest extends Specification {
             properties.sut_api_auth_url,
             properties.sut_api_admin_url
          )
+
+         // set required header for POST endpoints
+         client.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
          client.auth("admin@cabolabs.com", "admin") // TODO: set on config file
 
          auth = true // TODO: actually check the auth result is OK
