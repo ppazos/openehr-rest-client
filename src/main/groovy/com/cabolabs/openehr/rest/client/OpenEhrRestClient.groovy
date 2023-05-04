@@ -1,24 +1,26 @@
 package com.cabolabs.openehr.rest.client
 
 import com.cabolabs.openehr.rm_1_0_2.ehr.*
-import com.cabolabs.openehr.dto_1_0_2.ehr.EhrDto
-
 import com.cabolabs.openehr.rm_1_0_2.composition.Composition
+import com.cabolabs.openehr.rm_1_0_2.demographic.PartyRelationship
+
+import com.cabolabs.openehr.dto_1_0_2.ehr.EhrDto
+import com.cabolabs.openehr.dto_1_0_2.demographic.ActorDto
 
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
+import groovy.util.logging.*
+
 import com.cabolabs.openehr.formats.OpenEhrJsonParserQuick
-import com.cabolabs.openehr.opt.parser.OperationalTemplateParser
+import com.cabolabs.openehr.formats.OpenEhrJsonSerializer
 import com.cabolabs.openehr.opt.model.OperationalTemplate
+import com.cabolabs.openehr.opt.parser.OperationalTemplateParser
 import com.cabolabs.openehr.opt.instance_generator.JsonInstanceCanonicalGenerator2
 import java.util.Properties
 import java.io.InputStream
+import java.nio.charset.StandardCharsets
 import net.pempek.unicode.UnicodeBOMInputStream
 import org.apache.log4j.*
-import groovy.util.logging.*
-import java.nio.charset.StandardCharsets
-import com.cabolabs.openehr.formats.OpenEhrJsonSerializer
-
 
 @Log4j
 class OpenEhrRestClient {
@@ -515,6 +517,155 @@ class OpenEhrRestClient {
          //def parser = new OpenEhrJsonParserQuick()
          //def compo_out = parser.parseComposition(response_body)
          return response_body
+      }
+
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+
+      return null // no compo is returned if there is an error
+   }
+
+
+   ActorDto createActor(ActorDto actor)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      def req = new URL("${this.baseUrl}/demographic/actor").openConnection()
+
+
+      req.setRequestMethod("POST")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only requests for now
+      req.setRequestProperty("Content-Type",  "application/json")
+      req.setRequestProperty("Prefer",        "return=representation")
+      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+
+      // required commiter header
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
+
+
+      // NOTE: JSON only requests for now
+      def serializer = new OpenEhrJsonSerializer()
+
+      // FIXME: serialize DTO!
+      def body = serializer.serialize(actor)
+
+      req.getOutputStream().write(body.getBytes("UTF-8"));
+
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = req.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = req.getErrorStream().getText()
+      }
+
+
+      def status = req.getResponseCode()
+
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
+      if (status.equals(201))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         parser.setSchemaFlavorAPI()
+
+         def out = parser.parseActorDto(response_body) // NOTE: parseJson doesn't work with the ActorDto
+         return out
+      }
+
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+
+      return null // no compo is returned if there is an error
+   }
+
+   PartyRelationship createRelationship(PartyRelationship relationship)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      def req = new URL("${this.baseUrl}/demographic/relationship").openConnection()
+
+
+      req.setRequestMethod("POST")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only requests for now
+      req.setRequestProperty("Content-Type",  "application/json")
+      req.setRequestProperty("Prefer",        "return=representation")
+      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+
+      // required commiter header
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
+
+
+      // NOTE: JSON only requests for now
+      def serializer = new OpenEhrJsonSerializer()
+      def body = serializer.serialize(relationship)
+
+      req.getOutputStream().write(body.getBytes("UTF-8"));
+
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = req.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = req.getErrorStream().getText()
+      }
+
+
+      def status = req.getResponseCode()
+
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
+      if (status.equals(201))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         parser.setSchemaFlavorAPI()
+
+         def out = parser.parseJson(response_body)
+         return out
       }
 
 

@@ -16,6 +16,7 @@ import com.cabolabs.openehr.rm_1_0_2.common.generic.PartySelf
 
 import com.cabolabs.openehr.formats.OpenEhrJsonParserQuick
 
+import groovy.json.JsonSlurper
 
 class OpenEhrRestClientTest extends Specification {
 
@@ -28,7 +29,7 @@ class OpenEhrRestClientTest extends Specification {
       // read values from config file
       def properties = new Properties()
 
-      this.getClass().getResource(File.separator + 'application.properties').withInputStream {
+      this.getClass().getResource('/application.properties').withInputStream {
          properties.load(it)
       }
 
@@ -250,14 +251,11 @@ class OpenEhrRestClientTest extends Specification {
    }
 
 
-
-
-
-   def "create composition"()
+   def "create composition minimal evaluation 100 times"()
    {
       when:
-         String opt        = this.getClass().getResource(File.separator + 'minimal_evaluation.opt').text
-         String json_compo = this.getClass().getResource(File.separator + 'minimal_evaluation.en.v1_20230205.json').text
+         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
 
          //println json_compo
 
@@ -303,5 +301,82 @@ class OpenEhrRestClientTest extends Specification {
          // server cleanup
          client.truncateServer()
 
+   }
+
+
+   def "create demographic family trees"()
+   {
+      when:
+         String opt           = this.getClass().getResource('/generic_person.opt').text
+         String sample_person = this.getClass().getResource('/generic_person.json').text
+
+         // this relationship is a "natural child" relationship, so the source is the child and the target is the parent.
+         String sample_relationship = this.getClass().getResource('/generic_relationship.json').text
+         String demographics  = this.getClass().getResource('/demographics.json').text
+
+
+         def json_parser = new JsonSlurper()
+         def parsed_demographics = json_parser.parseText(demographics)
+
+
+         client.uploadTemplate(opt)
+
+
+         def parser = new OpenEhrJsonParserQuick()
+         parser.setSchemaFlavorAPI()
+
+         def person = parser.parseActorDto(sample_person)
+         def relationship = parser.parseJson(sample_relationship)
+
+         //println person.identities[0].details.items[0].value.value
+         // println relationship.source.id.value
+         // println relationship.target.id.value
+
+
+
+         def results = []
+         def out_person
+         parsed_demographics.people.each { data_person ->
+
+            //println data_person.name
+            // change the name of the sample person
+            person.identities[0].details.items[0].value.value = data_person.name
+            out_person = client.createActor(person)
+
+            // save the uid so we can create the relationship for the parent
+            data_person.uid = out_person.uid.value
+
+            results << out_person
+         }
+
+
+         // create family relationships
+         def parent
+         def results_relationships = []
+         parsed_demographics.people.each { data_person ->
+
+            data_person.parents.each { parent_id ->
+
+               relationship.source.id.value = data_person.uid // this is the version uid
+
+               parent = parsed_demographics.people.find{ it.id == parent_id } // find one parent
+
+               relationship.target.id.value = parent.uid // this is the version uid
+
+               results_relationships << client.createRelationship(relationship)
+            }
+         }
+
+
+      then:
+         // results.each {
+         //    it != null
+         // }
+         true
+
+
+      //cleanup:
+         // server cleanup
+         //client.truncateServer()
    }
 }
