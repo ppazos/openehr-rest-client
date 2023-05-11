@@ -37,9 +37,9 @@ class OpenEhrRestClientTest extends Specification {
       if (!auth)
       {
          client = new OpenEhrRestClient(
-            properties.sut_api_url,
-            properties.sut_api_auth_url,
-            properties.sut_api_admin_url
+                 System.getenv('SUT_API_URL') ?: properties.sut_api_url,
+                 System.getenv('SUT_API_AUTH_URL') ?: properties.sut_api_auth_url,
+                 System.getenv('SUT_API_ADMIN_URL') ?: properties.sut_api_admin_url
          )
 
          // set required header for POST endpoints
