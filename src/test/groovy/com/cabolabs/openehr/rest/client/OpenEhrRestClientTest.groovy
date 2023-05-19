@@ -81,7 +81,7 @@ class OpenEhrRestClientTest extends Specification {
          client.truncateServer()
 
 
-      // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
+      // NOTE: all subject_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patient
       where:
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
    }
@@ -213,43 +213,46 @@ class OpenEhrRestClientTest extends Specification {
    {
       // data_set_no | is_queryable | is_modifiable | has_status | subject_id | other_details | ehr_id
       return [
-         [ null,       true,          true,           false,       null,        null,           null    ],
-         [ null,       true,          true,           false,       null,        null,           '7029bd9b-0295-4313-9dd2-da070223aed0'    ],
-         [ 1,          true,          true,           true,        '11111',     null,           null    ],
-         [ 2,          true,          false,          true,        '22222',     null,           null    ],
-         [ 3,          false,         true,           true,        '33333',     null,           null    ],
-         [ 4,          false,         false,          true,        '44444',     null,           null    ],
-         [ 5,          true,          true,           true,        '55555',     true,           null    ],
-         [ 6,          true,          false,          true,        '66666',     true,           null    ],
-         [ 7,          false,         true,           true,        '77777',     true,           null    ],
-         [ 8,          false,         false,          true,        '88888',     true,           null    ],
-         [ 9,          true,          true,           true,        '99999',     null,           '11109' ],
-         [ 10,         true,          false,          true,        '101010',    null,           '22210' ],
-         [ 11,         false,         true,           true,        '111111',    null,           '33311' ],
-         [ 12,         false,         false,          true,        '121212',    null,           '44412' ],
-         [ 13,         true,          true,           true,        '131313',    true,           '55513' ],
-         [ 14,         true,          false,          true,        '141414',    true,           '66614' ],
-         [ 15,         false,         true,           true,        '151515',    true,           '77715' ],
-         [ 16,         false,         false,          true,        '161616',    true,           '88816' ],
-         [ 17,         true,          true,           true,        null,        null,           null    ],
-         [ 18,         true,          false,          true,        null,        null,           null    ],
-         [ 19,         false,         true,           true,        null,        null,           null    ],
-         [ 20,         false,         false,          true,        null,        null,           null    ],
-         [ 21,         true,          true,           true,        null,        true,           null    ],
-         [ 22,         true,          false,          true,        null,        true,           null    ],
-         [ 23,         false,         true,           true,        null,        true,           null    ],
-         [ 24,         false,         false,          true,        null,        true,           null    ],
-         [ 25,         true,          true,           true,        null,        null,           '111111'],
-         [ 26,         true,          false,          true,        null,        null,           '222222'],
-         [ 27,         false,         true,           true,        null,        null,           '333333'],
-         [ 28,         false,         false,          true,        null,        null,           '444444'],
-         [ 29,         true,          true,           true,        null,        true,           '555555'],
-         [ 30,         true,          false,          true,        null,        true,           '666666'],
-         [ 31,         false,         true,           true,        null,        true,           '777777'],
-         [ 32,         false,         false,          true,        null,        true,           '888888']
+         [ null,       true,          true,           false,       null,            null,           null    ],
+         [ null,       true,          true,           false,       null,            null,           randomUUID()    ],
+         [ 1,          true,          true,           true,        randomUUID(),    null,           null    ],
+         [ 2,          true,          false,          true,        randomUUID(),    null,           null    ],
+         [ 3,          false,         true,           true,        randomUUID(),    null,           null    ],
+         [ 4,          false,         false,          true,        randomUUID(),    null,           null    ],
+         [ 5,          true,          true,           true,        randomUUID(),    true,           null    ],
+         [ 6,          true,          false,          true,        randomUUID(),    true,           null    ],
+         [ 7,          false,         true,           true,        randomUUID(),    true,           null    ],
+         [ 8,          false,         false,          true,        randomUUID(),    true,           null    ],
+         [ 9,          true,          true,           true,        randomUUID(),    null,           randomUUID() ],
+         [ 10,         true,          false,          true,        randomUUID(),    null,           randomUUID() ],
+         [ 11,         false,         true,           true,        randomUUID(),    null,           randomUUID() ],
+         [ 12,         false,         false,          true,        randomUUID(),    null,           randomUUID() ],
+         [ 13,         true,          true,           true,        randomUUID(),    true,           randomUUID() ],
+         [ 14,         true,          false,          true,        randomUUID(),    true,           randomUUID() ],
+         [ 15,         false,         true,           true,        randomUUID(),    true,           randomUUID() ],
+         [ 16,         false,         false,          true,        randomUUID(),    true,           randomUUID() ],
+         [ 17,         true,          true,           true,        null,            null,           null    ],
+         [ 18,         true,          false,          true,        null,            null,           null    ],
+         [ 19,         false,         true,           true,        null,            null,           null    ],
+         [ 20,         false,         false,          true,        null,            null,           null    ],
+         [ 21,         true,          true,           true,        null,            true,           null    ],
+         [ 22,         true,          false,          true,        null,            true,           null    ],
+         [ 23,         false,         true,           true,        null,            true,           null    ],
+         [ 24,         false,         false,          true,        null,            true,           null    ],
+         [ 25,         true,          true,           true,        null,            null,           randomUUID()],
+         [ 26,         true,          false,          true,        null,            null,           randomUUID()],
+         [ 27,         false,         true,           true,        null,            null,           randomUUID()],
+         [ 28,         false,         false,          true,        null,            null,           randomUUID()],
+         [ 29,         true,          true,           true,        null,            true,           randomUUID()],
+         [ 30,         true,          false,          true,        null,            true,           randomUUID()],
+         [ 31,         false,         true,           true,        null,            true,           randomUUID()],
+         [ 32,         false,         false,          true,        null,            true,           randomUUID()   ]
       ]
    }
 
+   static randomUUID() {
+      return java.util.UUID.randomUUID().toString()
+   }
 
    def "create composition minimal evaluation 100 times"()
    {
