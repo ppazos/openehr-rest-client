@@ -393,6 +393,8 @@ class OpenEhrRestClient {
       return null // no ehr is returned if there is an error
    }
 
+   // COMPOSITION
+
    Composition createComposition(String ehr_id, Composition compo)
    {
       if (!this.token)
@@ -463,6 +465,58 @@ class OpenEhrRestClient {
 
       return null // no compo is returned if there is an error
    }
+
+   Composition getComposition(String ehr_id, String version_uid)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      def req = new URL("${this.baseUrl}/ehr/${ehr_id}/composition/${version_uid}").openConnection()
+
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only for now
+      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = req.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = req.getErrorStream().getText()
+      }
+
+
+      def status = req.getResponseCode()
+
+      if (status.equals(200))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         def compo_out = parser.parseJson(response_body)
+         return compo_out
+      }
+
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+
+      return null // no compo is returned if there is an error
+   }
+
+   // TEMPLATE
 
    // TODO: we need a way to serialize OperationalTemplate to XML in openEHR-OPT
    def uploadTemplate(String opt)

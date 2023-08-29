@@ -28,10 +28,12 @@ class OpenEhrRestClientTest extends Specification {
 
    static Random rand = new Random()
 
+   static Properties properties
+
    def setup()
    {
       // read values from config file
-      def properties = new Properties()
+      properties = new Properties()
 
       this.getClass().getResource('/application.properties').withInputStream {
          properties.load(it)
@@ -151,6 +153,78 @@ class OpenEhrRestClientTest extends Specification {
    }
 
 
+
+   def "B.4.a. get composition at version"()
+   {
+      when:
+         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser = new OpenEhrJsonParserQuick()
+         def compo = parser.parseJson(json_compo)
+         def ehr = client.createEhr()
+
+         def out_composition = client.createComposition(ehr.ehr_id.value, compo)
+         def get_composition = client.getComposition(ehr.ehr_id.value, out_composition.uid.value)
+
+      then:
+         get_composition != null
+         out_composition.uid.value == get_composition.uid.value
+         out_composition.archetype_node_id == get_composition.archetype_node_id
+         out_composition.archetype_details.template_id.value == get_composition.archetype_details.template_id.value
+
+      cleanup:
+         client.truncateServer()
+   }
+
+   def "B.4.b. get composition at version, version doesn't exist"()
+   {
+      when:
+         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser = new OpenEhrJsonParserQuick()
+         def compo = parser.parseJson(json_compo)
+         def ehr = client.createEhr()
+
+         def get_composition = client.getComposition(ehr.ehr_id.value, 'xxx.yyy.v1')
+
+      then:
+         get_composition == null
+
+         // this is a way to check the error message and leave the error message be configurable for each SUT
+         // the path where the error message is located in the response and the expected error message are configured
+         // the expected error message has configurable arguments (for the variable content) in the form {0} {1} ... which are replaced here for the expected values
+         get_at_path(client.lastError, properties.error_composition_not_found_path) == error_message_replace_values(properties.error_composition_not_found_msg, ['xxx.yyy.v1'])
+
+
+      cleanup:
+         client.truncateServer()
+   }
+
+
+   def "B.4.c. get composition at version, ehr doesn't exist"()
+   {
+      when:
+         def get_composition = client.getComposition('xxxxxxxx', 'xxx.yyy.v1')
+
+      then:
+         get_composition == null
+
+         get_at_path(client.lastError, properties.error_ehr_not_found_path) == error_message_replace_values(properties.error_ehr_not_found_msg, ['xxxxxxxx'])
+
+         //println client.lastError
+
+      cleanup:
+         client.truncateServer()
+   }
+
+
+
    private def create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
    {
       def ehr
@@ -243,7 +317,7 @@ class OpenEhrRestClientTest extends Specification {
       // data_set_no | is_queryable | is_modifiable | has_status | subject_id | other_details | ehr_id
       return [
          [ null,       true,          true,           false,       null,            null,           null    ],
-         [ null,       true,          true,           false,       null,            null,           randomUUID()    ],
+         [ null,       true,          true,           false,       null,            null,           randomUUID() ],
          [ 1,          true,          true,           true,        randomUUID(),    null,           null    ],
          [ 2,          true,          false,          true,        randomUUID(),    null,           null    ],
          [ 3,          false,         true,           true,        randomUUID(),    null,           null    ],
@@ -283,7 +357,8 @@ class OpenEhrRestClientTest extends Specification {
       return java.util.UUID.randomUUID().toString()
    }
 
-   def "create composition minimal evaluation 100 times"()
+
+   def "LOAD. create composition minimal evaluation 100 times"()
    {
       when:
          String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
@@ -306,16 +381,14 @@ class OpenEhrRestClientTest extends Specification {
             client.createComposition(ehr.ehr_id.value, compo)
          }
 
-         /*
-         def compo_out = client.createComposition(ehr.ehr_id.value, compo)
+         // def compo_out = client.createComposition(ehr.ehr_id.value, compo)
 
-         println compo_out
+         // println compo_out
 
-         if (!compo_out)
-         {
-            println client.lastError
-         }
-         */
+         // if (!compo_out)
+         // {
+         //    println client.lastError
+         // }
 
          //client.lastError.result.code == 'EHRSERVER::API::RESPONSE_CODES::99213'
          //client.lastError.result.message
@@ -332,11 +405,9 @@ class OpenEhrRestClientTest extends Specification {
       // cleanup:
       //    // server cleanup
       //    client.truncateServer()
-
    }
 
-
-   def "create demographic family trees"()
+   def "LOAD. create demographic family trees"()
    {
       when:
          //String opt_person    = this.getClass().getResource('/generic_person.opt').text
@@ -628,5 +699,35 @@ class OpenEhrRestClientTest extends Specification {
       def name = committer_names[uid]
 
       client.setCommitterHeader('name="'+ name +'", external_ref.id="'+ uid +'", external_ref.namespace="demographic", external_ref.type="PERSON"')
+   }
+
+
+   // UTIL METHODS
+
+   /**
+    * Replaces arguments in error messages: "This {0} is an error for {1}", [a, b] => "This a is an error for b"
+    */
+   private error_message_replace_values(String error_msg, List values)
+   {
+      for (int i = 0; i < values.size(); i++)
+      {
+         error_msg = error_msg.replace("{$i}", values[i].toString())
+      }
+
+      return error_msg
+   }
+
+   /**
+    * object is a JSON parsed as a Map, we support JSON only for now!
+    */
+   private get_at_path(Map object, String path)
+   {
+      // path = a.b.c
+      // path_quoted = "a"."b"."c"
+      def path_quoted = '"'+ path.replaceAll('\\.', '"."') + '"'
+      def command = ' o.'+ path_quoted
+
+      // access object.a.b.c, where the object is named 'o' in the command
+      Eval.me('o', object, command)
    }
 }
