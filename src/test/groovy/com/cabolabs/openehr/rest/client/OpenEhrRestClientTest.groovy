@@ -357,8 +357,8 @@ class OpenEhrRestClientTest extends Specification {
       return java.util.UUID.randomUUID().toString()
    }
 
-   /*
-   def "create composition minimal evaluation 100 times"()
+
+   def "LOAD. create composition minimal evaluation 100 times"()
    {
       when:
          String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
@@ -407,8 +407,7 @@ class OpenEhrRestClientTest extends Specification {
       //    client.truncateServer()
    }
 
-
-   def "create demographic family trees"()
+   def "LOAD. create demographic family trees"()
    {
       when:
          //String opt_person    = this.getClass().getResource('/generic_person.opt').text
@@ -671,8 +670,6 @@ class OpenEhrRestClientTest extends Specification {
          //client.truncateServer()
    }
 
-   */
-
    private void changeCommitHeaders()
    {
       def committer_names = [
@@ -703,6 +700,7 @@ class OpenEhrRestClientTest extends Specification {
 
       client.setCommitterHeader('name="'+ name +'", external_ref.id="'+ uid +'", external_ref.namespace="demographic", external_ref.type="PERSON"')
    }
+
 
    // UTIL METHODS
 
