@@ -58,11 +58,11 @@
 				},
 				"template_id": {
 					"_type": "TEMPLATE_ID",
-					"value": "generic_role"
+					"value": "generic_role_complete"
 				},
 				"rm_version": "1.0.2"
 			},
-			"archetype_node_id": "openEHR-DEMOGRAPHIC-ROLE.generic.v1",
+			"archetype_node_id": "openEHR-DEMOGRAPHIC-ROLE.generic_role.v1",
 			"identities": [
 				{
 					"name": {
