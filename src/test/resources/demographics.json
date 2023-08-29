@@ -1,228 +1,149 @@
 {
-  "people": [
-    {
-      "id": 1,
-      "name": "Mauro",
-      "parents": [],
-      "sex": "M",
-      "dob": "1892-06-20"
-    },
-    {
-      "id": 2,
-      "name": "Paz",
-      "parents": [],
-      "sex": "F",
-      "dob": "1901-07-21"
-    },
-    {
-      "id": 3,
-      "name": "Rodrigo",
-      "parents": [1,2],
-      "sex": "M",
-      "dob": "1922-04-15"
-    },
-    {
-      "id": 4,
-      "name": "Esther",
-      "parents": [1,2],
-      "sex": "F",
-      "dob": "1930-05-16"
-    },
-    {
-      "id": 5,
-      "name": "Andres",
-      "parents": [],
-      "sex": "M",
-      "dob": "1899-10-23"
-    },
-    {
-      "id": 6,
-      "name": "Julia",
-      "parents": [],
-      "sex": "F",
-      "dob": "1903-08-24"
-    },
-    {
-      "id": 7,
-      "name": "Enrique",
-      "parents": [5,6],
-      "sex": "M",
-      "dob": "1929-06-17"
-    },
-    {
-      "id": 8,
-      "name": "Diego",
-      "parents": [4,7],
-      "sex": "M",
-      "dob": "1953-07-18"
-    },
-    {
-      "id": 9,
-      "name": "Barbara",
-      "parents": [4,7],
-      "sex": "F",
-      "dob": "1955-08-19"
-    },
-    {
-      "id": 10,
-      "name": "Camila",
-      "parents": [],
-      "sex": "F",
-      "dob": "1957-09-20"
-    },
-    {
-      "id": 11,
-      "name": "Walter",
-      "parents": [10,8],
-      "sex": "M",
-      "dob": "1981-10-24"
-    },
-    {
-      "id": 12,
-      "name": "Graciela",
-      "parents": [10,8],
-      "sex": "F",
-      "dob": "1983-11-02"
-    },
-    {
-      "id": 13,
-      "name": "Claudia",
-      "parents": [],
-      "sex": "F",
-      "dob": "1989-03-19"
-    },
-    {
-      "id": 14,
-      "name": "Magdalena",
-      "parents": [13,11],
-      "sex": "F",
-      "dob": "2022-04-03"
-    },
-    {
-      "id": 15,
-      "name": "Carlos",
-      "parents": [],
-      "sex": "M",
-      "dob": "1900-01-26"
-    },
-    {
-      "id": 16,
-      "name": "Mariana",
-      "parents": [],
-      "sex": "F",
-      "dob": "1904-09-25"
-    },
-    {
-      "id": 17,
-      "name": "Juan",
-      "parents": [15,16],
-      "sex": "M",
-      "dob": "1935-12-25"
-    },
-    {
-      "id": 18,
-      "name": "Alejandro",
-      "parents": [17,9],
-      "sex": "M",
-      "dob": "1987-01-29"
-    },
-    {
-      "id": 19,
-      "name": "Mercedes",
-      "parents": [17,9],
-      "sex": "F",
-      "dob": "1999-02-28"
-    },
-    {
-      "id": 20,
-      "name": "Emilio",
-      "parents": [],
-      "sex": "M",
-      "dob": "1901-10-27"
-    },
-    {
-      "id": 21,
-      "name": "Renata",
-      "parents": [],
-      "sex": "F",
-      "dob": "1903-11-28"
-    },
-    {
-      "id": 22,
-      "name": "Jose",
-      "parents": [20,21],
-      "sex": "M",
-      "dob": "1929-10-25"
-    },
-    {
-      "id": 23,
-      "name": "Soledad",
-      "parents": [20,21],
-      "sex": "F",
-      "dob": "1931-09-24"
-    },
-    {
-      "id": 24,
-      "name": "Alberto",
-      "parents": [],
-      "sex": "M",
-      "dob": "1930-08-23"
-    },
-    {
-      "id": 25,
-      "name": "Monica",
-      "parents": [23,24],
-      "sex": "F",
-      "dob": "1964-11-26"
-    },
-    {
-      "id": 26,
-      "name": "Berta",
-      "parents": [25,17],
-      "sex": "F",
-      "dob": "1994-12-27"
-    },
-    {
-      "id": 27,
-      "name": "Dario",
-      "parents": [],
-      "sex": "M",
-      "dob": "1898-12-28"
-    },
-    {
-      "id": 28,
-      "name": "Gladis",
-      "parents": [],
-      "sex": "F",
-      "dob": "1904-12-21"
-    },
-    {
-      "id": 29,
-      "name": "Maximiliano",
-      "parents": [27,28],
-      "sex": "M",
-      "dob": "1921-01-11"
-    },
-    {
-      "id": 30,
-      "name": "Paula",
-      "parents": [27,28],
-      "sex": "F",
-      "dob": "1929-02-12"
-    },
-    {
-      "id": 31,
-      "name": "Xavier",
-      "parents": [],
-      "sex": "M",
-      "dob": "1928-03-13"
-    },
-    {
-      "id": 32,
-      "name": "Juana",
-      "parents": [30,31],
-      "sex": "F",
-      "dob": "1955-03-14"
-    }
-  ]
+   "_type": "COMPOSITION",
+   "name": {
+      "_type": "DV_TEXT",
+      "value": "Demographics"
+   },
+   "archetype_details": {
+      "archetype_id": {
+         "_type": "ARCHETYPE_ID",
+         "value": "openEHR-EHR-COMPOSITION.demographics.v1"
+      },
+      "template_id": {
+         "_type": "TEMPLATE_ID",
+         "value": "Demographics"
+      },
+      "rm_version": "1.0.2"
+   },
+   "archetype_node_id": "openEHR-EHR-COMPOSITION.demographics.v1",
+   "language": {
+      "terminology_id": {
+         "_type": "TERMINOLOGY_ID",
+         "value": "ISO_639-1"
+      },
+      "code_string": "en"
+   },
+   "territory": {
+      "terminology_id": {
+         "_type": "TERMINOLOGY_ID",
+         "value": "ISO_3166-1"
+      },
+      "code_string": "UY"
+   },
+   "category": {
+      "value": "event",
+      "defining_code": {
+         "terminology_id": {
+            "_type": "TERMINOLOGY_ID",
+            "value": "openehr"
+         },
+         "code_string": "433"
+      }
+   },
+   "composer": {
+      "_type": "PARTY_IDENTIFIED",
+      "external_ref": {
+         "id": {
+            "_type": "HIER_OBJECT_ID",
+            "value": "02cc0908-3196-4d5f-9f6c-85c5b0be603d"
+         },
+         "namespace": "DEMOGRAPHIC",
+         "type": "PERSON"
+      },
+      "name": "Dr. Yamamoto"
+   },
+   "context": {
+      "start_time": {
+         "value": "2023-05-25T23:40:39.264Z"
+      },
+      "setting": {
+         "value": "emergency care",
+         "defining_code": {
+            "terminology_id": {
+               "_type": "TERMINOLOGY_ID",
+               "value": "openehr"
+            },
+            "code_string": "227"
+         }
+      }
+   },
+   "content": [
+      {
+         "_type": "ADMIN_ENTRY",
+         "name": {
+            "_type": "DV_TEXT",
+            "value": "Demographics"
+         },
+         "archetype_details": {
+            "archetype_id": {
+               "_type": "ARCHETYPE_ID",
+               "value": "openEHR-EHR-ADMIN_ENTRY.demographics.v1"
+            },
+            "template_id": {
+               "_type": "TEMPLATE_ID",
+               "value": "Demographics"
+            },
+            "rm_version": "1.0.2"
+         },
+         "archetype_node_id": "openEHR-EHR-ADMIN_ENTRY.demographics.v1",
+         "language": {
+            "terminology_id": {
+               "_type": "TERMINOLOGY_ID",
+               "value": "ISO_639-1"
+            },
+            "code_string": "en"
+         },
+         "encoding": {
+            "terminology_id": {
+               "_type": "TERMINOLOGY_ID",
+               "value": "IANA_character-sets"
+            },
+            "code_string": "UTF-8"
+         },
+         "subject": {
+            "_type": "PARTY_SELF"
+         },
+         "data": {
+            "_type": "ITEM_TREE",
+            "name": {
+               "_type": "DV_TEXT",
+               "value": "Tree"
+            },
+            "archetype_node_id": "at0001",
+            "items": [
+               {
+                  "_type": "ELEMENT",
+                  "name": {
+                     "_type": "DV_TEXT",
+                     "value": "Sex"
+                  },
+                  "archetype_node_id": "at0002",
+                  "value": {
+                     "_type": "DV_CODED_TEXT",
+                     "value": "Male",
+                     "defining_code": {
+                        "terminology_id": {
+                           "_type": "TERMINOLOGY_ID",
+                           "value": "local"
+                        },
+                        "code_string": "at0003"
+                     }
+                  }
+               },
+               {
+                  "_type": "ELEMENT",
+                  "name": {
+                     "_type": "DV_TEXT",
+                     "value": "Date of birth"
+                  },
+                  "archetype_node_id": "at0006",
+                  "value": {
+                     "_type": "DV_DATE_TIME",
+                     "value": "2023-05-25T23:40:39.276Z"
+                  }
+               }
+            ]
+         }
+      }
+   ]
 }
