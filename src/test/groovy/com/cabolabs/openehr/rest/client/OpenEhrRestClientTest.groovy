@@ -224,6 +224,75 @@ class OpenEhrRestClientTest extends Specification {
    }
 
 
+   // B.6. CREATE COMPOSITION
+
+   def "B.6.a. create new event composition"()
+   {
+      when:
+         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser = new OpenEhrJsonParserQuick()
+         def compo = parser.parseJson(json_compo)
+         def ehr = client.createEhr()
+
+         def out_composition = client.createComposition(ehr.ehr_id.value, compo)
+
+         // check the compo exists in the server
+         def get_composition = client.getComposition(ehr.ehr_id.value, out_composition.uid.value)
+
+      then:
+         out_composition != null
+         out_composition.uid.value != null
+         get_composition != null
+         get_composition.uid.value == out_composition.uid.value
+
+
+      cleanup:
+         // server cleanup
+         client.truncateServer()
+   }
+
+
+   // B.7. UPDATE COMPOSITION
+
+   def "B.7.a. update an existing event composition"()
+   {
+      when:
+         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser = new OpenEhrJsonParserQuick()
+         def compo = parser.parseJson(json_compo)
+         def ehr = client.createEhr()
+
+         def out_composition = client.createComposition(ehr.ehr_id.value, compo)
+
+         // there is a problem with the update if it comes microseconds after the create for updating the created compo, there is a race condition when indexing.
+         sleep(5000)
+
+         // NOTE: the compo should be updated but is not needed for this test so we use the same compo as the create
+         def update_composition = client.updateComposition(ehr.ehr_id.value, compo, out_composition.uid.value)
+
+      then:
+         out_composition != null
+         out_composition.uid.value != null
+         update_composition != null
+         update_composition.uid.value.split("::")[0] == out_composition.uid.value.split("::")[0]
+         update_composition.uid.value.split("::")[1] == out_composition.uid.value.split("::")[1]
+         Integer.parseInt(update_composition.uid.value.split("::")[2]) == Integer.parseInt(out_composition.uid.value.split("::")[2]) + 1
+
+
+      //cleanup:
+         // server cleanup
+         //client.truncateServer()
+   }
+
+
 
    private def create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
    {
