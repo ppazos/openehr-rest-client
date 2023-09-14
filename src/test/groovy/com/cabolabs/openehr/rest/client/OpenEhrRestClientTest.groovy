@@ -273,7 +273,7 @@ class OpenEhrRestClientTest extends Specification {
          def out_composition = client.createComposition(ehr.ehr_id.value, compo)
 
          // there is a problem with the update if it comes microseconds after the create for updating the created compo, there is a race condition when indexing.
-         sleep(5000)
+         //sleep(5000)
 
          // NOTE: the compo should be updated but is not needed for this test so we use the same compo as the create
          def update_composition = client.updateComposition(ehr.ehr_id.value, compo, out_composition.uid.value)
