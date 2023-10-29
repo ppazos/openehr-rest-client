@@ -212,13 +212,13 @@
                   "archetype_node_id": "at0002.1",
                   "value": {
                      "_type": "DV_CODED_TEXT",
-                     "value": "nAHEZrhz.avxYpToxiqNcwTHGOmEMZ",
+                     "value": "Diabetes mellitus type 1",
                      "defining_code": {
                         "terminology_id": {
                            "_type": "TERMINOLOGY_ID",
                            "value": "SNOMED-CT"
                         },
-                        "code_string": "158645"
+                        "code_string": "46635009"
                      }
                   }
                },

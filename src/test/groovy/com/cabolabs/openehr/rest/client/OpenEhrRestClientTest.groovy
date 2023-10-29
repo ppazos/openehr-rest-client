@@ -502,7 +502,7 @@ class OpenEhrRestClientTest extends Specification {
          // Sample COMPOSITIONS
          String sample_demographics = this.getClass().getResource('/demographics.json').text
          String sample_vital_signs  = this.getClass().getResource('/vital_signs_monitoring.json').text
-         String sample_encounter    = this.getClass().getResource('/encounter_with_coded_diagnosis.json').text
+         String sample_encounter    = this.getClass().getResource('/encounter_with_coded_diagnosis.json').text // NOTE: the diagnosis is dynamic below
 
 
          // Demographic data
@@ -558,7 +558,8 @@ class OpenEhrRestClientTest extends Specification {
             '427089005':          'Diabetes mellitus due to cystic fibrosis',
             '31321000119102':     'Diabetes mellitus type 1 without retinopathy',
             '23045005':           'Insulin dependent diabetes mellitus type IA',
-            '237599002':          'Insulin treated type 2 diabetes mellitus'
+            '237599002':          'Insulin treated type 2 diabetes mellitus',
+            '46635009 ':          'Diabetes mellitus type 1'
          ]
          def allergy_diagnosis = [ // parent: 419076005 | Allergic reaction (disorder) |
             '139841000119108':    'Anaphylaxis caused by allergy skin test',
@@ -701,7 +702,7 @@ class OpenEhrRestClientTest extends Specification {
             changeCommitHeaders()
             client.createComposition(ehr.ehr_id.value, encounter)
 
-            sleep(500) // adds delay to see different commti times
+            sleep(100) // adds delay to see different commit times
 
 
             results << out_person
