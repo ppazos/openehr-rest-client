@@ -393,6 +393,54 @@ class OpenEhrRestClient {
       return null // no ehr is returned if there is an error
    }
 
+   EhrDto getEhr(String ehr_id)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      def get = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
+
+      get.setRequestMethod("GET")
+      get.setDoOutput(true)
+
+      //get.setRequestProperty("Content-Type", "application/json") // add to send a status
+      //get.setRequestProperty("Prefer", "return=representation")
+      get.setRequestProperty("Accept", "application/json")
+      get.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = get.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = get.getErrorStream().getText()
+      }
+
+      def status = get.getResponseCode()
+
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
+      if (status.equals(200))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         def ehr = parser.parseEhrDto(response_body)
+         return ehr
+      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+      return null // no ehr is returned if there is an error
+   }
+
    // COMPOSITION
 
    Composition createComposition(String ehr_id, Composition compo)

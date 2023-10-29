@@ -117,7 +117,6 @@ class OpenEhrRestClientTest extends Specification {
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
    }
 
-
    @Unroll
    def "B.1.b. create ehr twice"()
    {
@@ -139,6 +138,8 @@ class OpenEhrRestClientTest extends Specification {
       then:
          ehr2 == null
          client.lastError.result.code == 'EHRSERVER::API::RESPONSE_CODES::99213'
+
+         // NOTE: error messages might be left out of the formal onformance
          client.lastError.result.message == "EHR with ehr_id ${ehr1.ehr_id.value} already exists, ehr_id must be unique"
 
 
@@ -150,6 +151,38 @@ class OpenEhrRestClientTest extends Specification {
       // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
       where:
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
+   }
+
+
+
+   def "B.3.a. get existing ehr"()
+   {
+      when:
+         def ehr = client.createEhr()
+         def get_ehr = client.getEhr(ehr.ehr_id.value)
+      
+      then:
+         get_ehr != null
+         ehr.ehr_id.value == get_ehr.ehr_id.value
+
+      cleanup:
+         client.truncateServer()
+   }
+
+   // TODO: B.3.b.
+
+   def "B.3.c. get non existing ehr"()
+   {
+      when:
+         def get_ehr = client.getEhr('non-existing-id')
+      
+      then:
+         get_ehr == null
+         client.lastError != null
+         client.lastError.result.message == error_message_replace_values(properties.error_ehr_not_found_msg, ['non-existing-id'])
+
+      cleanup:
+         client.truncateServer()
    }
 
 
