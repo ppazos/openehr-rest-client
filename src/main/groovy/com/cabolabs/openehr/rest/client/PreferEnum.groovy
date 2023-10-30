@@ -2,6 +2,7 @@ package com.cabolabs.openehr.rest.client
 
 enum PreferEnum {
 
+   REPRESENTATION_RESOLVE_REFS('return=representation, resolve_refs'),
    REPRESENTATION('return=representation'),
    MINIMAL('return=minimal')
 

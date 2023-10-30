@@ -97,7 +97,7 @@ class OpenEhrRestClient {
     * Creates a default EHR, no payload was provided and returns the full representation of the EHR created.
     * @return EHR created.
     */
-   EhrDto createEhr()
+   def createEhr()
    {
       def req = new URL(this.baseUrl +"/ehr").openConnection()
 
@@ -107,10 +107,10 @@ class OpenEhrRestClient {
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
-      // required commiter header
+      // required committer header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
       {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
@@ -125,8 +125,12 @@ class OpenEhrRestClient {
       if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (this.prefer == PreferEnum.REPRESENTATION_RESOLVE_REFS)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       // Expects a JSON error
@@ -137,7 +141,7 @@ class OpenEhrRestClient {
       return null // no ehr is returned if there is an error
    }
 
-   EhrDto createEhr(String ehr_id)
+   def createEhr(String ehr_id)
    {
       def req = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
@@ -147,10 +151,10 @@ class OpenEhrRestClient {
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
-      // required commiter header
+      // required committer header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
       {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
@@ -165,8 +169,12 @@ class OpenEhrRestClient {
       if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (this.prefer == PreferEnum.REPRESENTATION_RESOLVE_REFS)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       // Expects a JSON error
@@ -180,7 +188,7 @@ class OpenEhrRestClient {
    /**
     * Creates an EHR ith the given EHR_STATUS
     */
-   EhrDto createEhr(EhrStatus ehr_status)
+   def createEhr(EhrStatus ehr_status)
    {
       def req = new URL(this.baseUrl +"/ehr").openConnection()
 
@@ -194,10 +202,10 @@ class OpenEhrRestClient {
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
-      // required commiter header
+      // required committer header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
       {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
@@ -215,8 +223,12 @@ class OpenEhrRestClient {
       if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (this.prefer == PreferEnum.REPRESENTATION_RESOLVE_REFS)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       // Expects a JSON error
@@ -230,7 +242,7 @@ class OpenEhrRestClient {
    /**
     * Creates an EHR ith the given EHR_STATUS and ehr_id
     */
-   EhrDto createEhr(EhrStatus ehr_status, String ehr_id)
+   def createEhr(EhrStatus ehr_status, String ehr_id)
    {
       def req = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
@@ -244,10 +256,10 @@ class OpenEhrRestClient {
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
-      // required commiter header
+      // required committer header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
       {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
@@ -263,8 +275,12 @@ class OpenEhrRestClient {
       if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (this.prefer == PreferEnum.REPRESENTATION_RESOLVE_REFS)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       def json_parser = new JsonSlurper()
@@ -273,7 +289,7 @@ class OpenEhrRestClient {
       return null // no ehr is returned if there is an error
    }
 
-   EhrDto getEhr(String ehr_id)
+   def getEhr(String ehr_id)
    {
       def get = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
@@ -281,7 +297,7 @@ class OpenEhrRestClient {
       get.setDoOutput(true)
       get.setRequestProperty("Accept",        this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(get)
 
 
@@ -292,8 +308,12 @@ class OpenEhrRestClient {
       if (this.lastResponseCode.equals(200))
       {
          def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (this.prefer == PreferEnum.REPRESENTATION_RESOLVE_REFS)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       // Expects a JSON error
@@ -318,11 +338,11 @@ class OpenEhrRestClient {
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
 
-      // required commiter header
+      // required committer header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
       {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
@@ -355,7 +375,6 @@ class OpenEhrRestClient {
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
 
-
       return null // no compo is returned if there is an error
    }
 
@@ -367,7 +386,7 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
       req.setRequestProperty("Accept",        this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
 
@@ -386,7 +405,6 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
-
 
       return null // no compo is returned if there is an error
    }
@@ -414,11 +432,11 @@ class OpenEhrRestClient {
       req.setRequestProperty("Accept",        this.accept.toString())
       req.setRequestProperty("If-Match",      version_uid)
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
 
-      // required commiter header
+      // required committer header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
       {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
@@ -451,7 +469,6 @@ class OpenEhrRestClient {
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
 
-
       return null // no compo is returned if there is an error
    }
 
@@ -469,7 +486,7 @@ class OpenEhrRestClient {
       req.setRequestProperty("Content-Type",  "application/xml")
       req.setRequestProperty("Accept",        "application/xml") //this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
 
@@ -523,11 +540,11 @@ class OpenEhrRestClient {
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
 
-      // required commiter header
+      // required committer header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
       {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
@@ -564,7 +581,6 @@ class OpenEhrRestClient {
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
 
-
       return null // no compo is returned if there is an error
    }
 
@@ -584,7 +600,7 @@ class OpenEhrRestClient {
       this.auth.apply(req)
 
 
-      // required commiter header
+      // required committer header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
       {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
@@ -618,7 +634,6 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
-
 
       return null // no compo is returned if there is an error
    }
@@ -661,7 +676,7 @@ class OpenEhrRestClient {
       // NOTE: JSON only for now
       req.setRequestProperty("Accept",        this.accept.toString())
 
-      // makes the authenticaiton magic over the current request
+      // makes the authentication magic over the current request
       this.auth.apply(req)
 
 
@@ -803,7 +818,7 @@ class OpenEhrRestClient {
       return response_body
    }
 
-   /* FIXME: trucation should be an extension of the REST Client
+   /* FIXME: truncation should be an extension of the REST Client
    def truncateServer()
    {
       if (performDbTruncation) {
