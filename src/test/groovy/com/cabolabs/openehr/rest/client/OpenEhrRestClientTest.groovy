@@ -138,10 +138,7 @@ class OpenEhrRestClientTest extends Specification {
 
       then:
          ehr2 == null
-         client.lastError.result.code == 'EHRSERVER::API::RESPONSE_CODES::99213'
-
-         // NOTE: error messages might be left out of the formal onformance
-         client.lastError.result.message == "EHR with ehr_id ${ehr1.ehr_id.value} already exists, ehr_id must be unique"
+         client.responseHttpStatusCode == 409
 
 
       cleanup:
@@ -180,7 +177,7 @@ class OpenEhrRestClientTest extends Specification {
       then:
          get_ehr == null
          client.lastError != null
-         client.lastError.result.message == error_message_replace_values(properties.error_ehr_not_found_msg, ['non-existing-id'])
+         client.responseHttpStatusCode == 404
 
       cleanup:
          client.truncateServer()
@@ -217,23 +214,18 @@ class OpenEhrRestClientTest extends Specification {
    {
       when:
          String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
-         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
 
          client.uploadTemplate(opt)
 
-         def parser = new OpenEhrJsonParserQuick()
-         def compo = parser.parseJson(json_compo)
          def ehr = client.createEhr()
 
-         def get_composition = client.getComposition(ehr.ehr_id.value, 'xxx.yyy.v1')
+         def get_composition = client.getComposition(ehr.ehr_id.value, randomUUID())
 
       then:
          get_composition == null
 
-         // this is a way to check the error message and leave the error message be configurable for each SUT
-         // the path where the error message is located in the response and the expected error message are configured
-         // the expected error message has configurable arguments (for the variable content) in the form {0} {1} ... which are replaced here for the expected values
-         get_at_path(client.lastError, properties.error_composition_not_found_path) == error_message_replace_values(properties.error_composition_not_found_msg, ['xxx.yyy.v1'])
+         client.lastError != null
+         client.responseHttpStatusCode == 404
 
 
       cleanup:
@@ -244,15 +236,12 @@ class OpenEhrRestClientTest extends Specification {
    def "B.4.c. get composition at version, ehr doesn't exist"()
    {
       when:
-         def get_composition = client.getComposition('xxxxxxxx', 'xxx.yyy.v1')
+         def get_composition = client.getComposition(randomUUID(), randomUUID())
 
       then:
          get_composition == null
-
-         get_at_path(client.lastError, properties.error_ehr_not_found_path) == error_message_replace_values(properties.error_ehr_not_found_msg, ['xxxxxxxx'])
-
-         //println client.lastError
-
+         client.lastError != null
+         client.responseHttpStatusCode == 404
       cleanup:
          client.truncateServer()
    }
@@ -467,14 +456,7 @@ class OpenEhrRestClientTest extends Specification {
          String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
          String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
 
-         //println json_compo
-
          client.uploadTemplate(opt)
-
-         // if (client.lastError)
-         // {
-         //    println client.lastError
-         // }
 
          def parser = new OpenEhrJsonParserQuick()
          def compo = parser.parseJson(json_compo)
@@ -484,30 +466,10 @@ class OpenEhrRestClientTest extends Specification {
             client.createComposition(ehr.ehr_id.value, compo)
          }
 
-         // def compo_out = client.createComposition(ehr.ehr_id.value, compo)
-
-         // println compo_out
-
-         // if (!compo_out)
-         // {
-         //    println client.lastError
-         // }
-
-         //client.lastError.result.code == 'EHRSERVER::API::RESPONSE_CODES::99213'
-         //client.lastError.result.message
-
-         //println results
-
-
       then:
          results.each {
             it != null
          }
-
-
-      // cleanup:
-      //    // server cleanup
-      //    client.truncateServer()
    }
 
    def "LOAD. create demographic family trees"()

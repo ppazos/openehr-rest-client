@@ -32,6 +32,7 @@ class OpenEhrRestClient {
    boolean performDbTruncation
    String token
    Map lastError = [:] // parsed JSON that contains an error response
+   Integer responseHttpStatusCode
    Map headers = [:] // extra headers to use in the POST endpoints like committer
 
    // TODO: refactor to share common code
@@ -210,6 +211,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
+      this.responseHttpStatusCode = status
 
       return null // no ehr is returned if there is an error
    }
@@ -266,6 +268,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
+      this.responseHttpStatusCode = status
 
       return null // no ehr is returned if there is an error
    }
@@ -333,6 +336,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
+      this.responseHttpStatusCode = status
 
       return null // no ehr is returned if there is an error
    }
@@ -395,6 +399,7 @@ class OpenEhrRestClient {
 
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
+      this.responseHttpStatusCode = status
 
       return null // no ehr is returned if there is an error
    }
@@ -443,6 +448,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
+      this.responseHttpStatusCode = status
 
       return null // no ehr is returned if there is an error
    }
@@ -515,7 +521,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
-
+      this.responseHttpStatusCode = status
 
       return null // no compo is returned if there is an error
    }
@@ -565,7 +571,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
-
+      this.responseHttpStatusCode = status
 
       return null // no compo is returned if there is an error
    }
@@ -648,7 +654,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
-
+      this.responseHttpStatusCode = status
 
       return null // no compo is returned if there is an error
    }
@@ -715,7 +721,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
-
+      this.responseHttpStatusCode = status
 
       return null // no compo is returned if there is an error
    }
@@ -791,7 +797,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
-
+      this.responseHttpStatusCode = status
 
       return null // no compo is returned if there is an error
    }
@@ -864,7 +870,7 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
-
+      this.responseHttpStatusCode = status
 
       return null // no compo is returned if there is an error
    }
