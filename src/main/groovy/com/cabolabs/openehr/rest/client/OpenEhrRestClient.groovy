@@ -3,24 +3,16 @@ package com.cabolabs.openehr.rest.client
 import com.cabolabs.openehr.rm_1_0_2.ehr.*
 import com.cabolabs.openehr.rm_1_0_2.composition.Composition
 import com.cabolabs.openehr.rm_1_0_2.demographic.PartyRelationship
-
-import com.cabolabs.openehr.dto_1_0_2.ehr.EhrDto
 import com.cabolabs.openehr.dto_1_0_2.demographic.ActorDto
 
 import groovy.json.JsonSlurper
-import groovy.json.JsonOutput
 import groovy.util.logging.*
 
 import com.cabolabs.openehr.formats.OpenEhrJsonParserQuick
 import com.cabolabs.openehr.formats.OpenEhrJsonSerializer
-import com.cabolabs.openehr.opt.model.OperationalTemplate
-import com.cabolabs.openehr.opt.parser.OperationalTemplateParser
-import com.cabolabs.openehr.opt.instance_generator.JsonInstanceCanonicalGenerator2
-import java.util.Properties
-import java.io.InputStream
+
 import java.nio.charset.StandardCharsets
 import net.pempek.unicode.UnicodeBOMInputStream
-import org.apache.log4j.*
 
 @Log4j
 class OpenEhrRestClient {
@@ -29,6 +21,10 @@ class OpenEhrRestClient {
    String baseAuthUrl
    String baseAdminUrl
    boolean performAuth
+   boolean supportsResolveRefs
+   boolean alwaysResolveRefs
+   String defaultRepDetailsPrefer
+   String defaultMediaType
    boolean performDbTruncation
    String token
    Map lastError = [:] // parsed JSON that contains an error response
@@ -36,14 +32,23 @@ class OpenEhrRestClient {
 
    // TODO: refactor to share common code
 
-   OpenEhrRestClient (String baseUrl, String baseAuthUrl,
-                      String baseAdminUrl,
-                      boolean performAuth, boolean performDbTruncation
-   ) {
+   OpenEhrRestClient (
+           String baseUrl, String baseAuthUrl,
+           String baseAdminUrl,
+           boolean performAuth,
+           boolean supportsResolveRefs,
+           boolean alwaysResolveRefs,
+           String defaultMediaType,
+           boolean performDbTruncation
+   ){
       this.baseUrl = baseUrl
       this.baseAuthUrl = baseAuthUrl
       this.baseAdminUrl = baseAdminUrl
       this.performAuth = performAuth
+      this.supportsResolveRefs = supportsResolveRefs
+      this.alwaysResolveRefs = alwaysResolveRefs
+      this.defaultMediaType = defaultMediaType
+      this.defaultRepDetailsPrefer = "return=representation"
       this.performDbTruncation = performDbTruncation
    }
 
@@ -89,9 +94,7 @@ class OpenEhrRestClient {
       def body = '' // '{"message":"this is a message"}' // add to send a status
 
       req.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-      //req.setRequestProperty("Content-Type", "application/json") // add to send a status
-      //req.setRequestProperty("Prefer", "return=representation")
-      req.setRequestProperty("Accept", "application/json")
+      req.setRequestProperty("Accept", this.defaultMediaType)
 
       req.setRequestMethod("POST")
       req.setDoOutput(true)
@@ -157,7 +160,7 @@ class OpenEhrRestClient {
     * Creates a default EHR, no payload was provided and returns the full representation of the EHR created.
     * @return EHR created.
     */
-   EhrDto createEhr()
+   def createEhr()
    {
       if (performAuth && !this.token)
       {
@@ -169,8 +172,8 @@ class OpenEhrRestClient {
       post.setRequestMethod("POST")
       post.setDoOutput(true)
 
-      post.setRequestProperty("Prefer", "return=representation")
-      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Prefer", this.defaultRepDetailsPrefer)
+      post.setRequestProperty("Accept", this.defaultMediaType)
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
@@ -202,8 +205,12 @@ class OpenEhrRestClient {
       if (status.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (alwaysResolveRefs)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       // Expects a JSON error
@@ -214,7 +221,7 @@ class OpenEhrRestClient {
       return null // no ehr is returned if there is an error
    }
 
-   EhrDto createEhr(String ehr_id)
+   def createEhr(String ehr_id)
    {
       if (performAuth && !this.token)
       {
@@ -226,8 +233,8 @@ class OpenEhrRestClient {
       post.setRequestMethod("PUT")
       post.setDoOutput(true)
 
-      post.setRequestProperty("Prefer", "return=representation")
-      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Prefer", this.defaultRepDetailsPrefer)
+      post.setRequestProperty("Accept", this.defaultMediaType)
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
@@ -258,8 +265,12 @@ class OpenEhrRestClient {
       if (status.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (alwaysResolveRefs)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       // Expects a JSON error
@@ -273,7 +284,7 @@ class OpenEhrRestClient {
    /**
     * Creates an EHR ith the given EHR_STATUS
     */
-   EhrDto createEhr(EhrStatus ehr_status)
+   def createEhr(EhrStatus ehr_status)
    {
       if (performAuth && !this.token)
       {
@@ -288,9 +299,9 @@ class OpenEhrRestClient {
       post.setRequestMethod("POST")
       post.setDoOutput(true)
 
-      post.setRequestProperty("Content-Type", "application/json") // add to send a status
-      post.setRequestProperty("Prefer", "return=representation")
-      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Content-Type", this.defaultMediaType) // add to send a status
+      post.setRequestProperty("Prefer", this.defaultRepDetailsPrefer)
+      post.setRequestProperty("Accept", this.defaultMediaType)
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
@@ -325,8 +336,12 @@ class OpenEhrRestClient {
       if (status.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (alwaysResolveRefs)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       // Expects a JSON error
@@ -340,7 +355,7 @@ class OpenEhrRestClient {
    /**
     * Creates an EHR ith the given EHR_STATUS and ehr_id
     */
-   EhrDto createEhr(EhrStatus ehr_status, String ehr_id)
+   def createEhr(EhrStatus ehr_status, String ehr_id)
    {
       if (performAuth && !this.token)
       {
@@ -355,9 +370,9 @@ class OpenEhrRestClient {
       post.setRequestMethod("PUT")
       post.setDoOutput(true)
 
-      post.setRequestProperty("Content-Type", "application/json") // add to send a status
-      post.setRequestProperty("Prefer", "return=representation")
-      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Content-Type", this.defaultMediaType) // add to send a status
+      post.setRequestProperty("Prefer", this.defaultRepDetailsPrefer)
+      post.setRequestProperty("Accept", this.defaultMediaType)
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
@@ -388,9 +403,12 @@ class OpenEhrRestClient {
       if (status.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
-         //println response_body
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (alwaysResolveRefs)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       def json_parser = new JsonSlurper()
@@ -399,7 +417,7 @@ class OpenEhrRestClient {
       return null // no ehr is returned if there is an error
    }
 
-   EhrDto getEhr(String ehr_id)
+   def getEhr(String ehr_id)
    {
       if (performAuth && !this.token)
       {
@@ -411,9 +429,8 @@ class OpenEhrRestClient {
       get.setRequestMethod("GET")
       get.setDoOutput(true)
 
-      //get.setRequestProperty("Content-Type", "application/json") // add to send a status
-      //get.setRequestProperty("Prefer", "return=representation")
-      get.setRequestProperty("Accept", "application/json")
+      get.setRequestProperty("Prefer", this.defaultRepDetailsPrefer)
+      get.setRequestProperty("Accept", this.defaultMediaType)
       get.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       String response_body
@@ -435,8 +452,12 @@ class OpenEhrRestClient {
       if (status.equals(200))
       {
          def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         if (alwaysResolveRefs)
+         {
+            return parser.parseEhrDto(response_body)
+         } else {
+            return parser.parseEhr(response_body)
+         }
       }
 
       // Expects a JSON error
@@ -463,9 +484,9 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: JSON only requests for now
-      req.setRequestProperty("Content-Type",  "application/json")
-      req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Content-Type",  this.defaultMediaType)
+      req.setRequestProperty("Prefer",        this.defaultRepDetailsPrefer)
+      req.setRequestProperty("Accept",        this.defaultMediaType)
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
 
@@ -516,7 +537,6 @@ class OpenEhrRestClient {
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
 
-
       return null // no compo is returned if there is an error
    }
 
@@ -534,7 +554,7 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: JSON only for now
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Accept",        this.defaultMediaType)
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       String response_body
@@ -566,7 +586,6 @@ class OpenEhrRestClient {
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
 
-
       return null // no compo is returned if there is an error
    }
 
@@ -595,9 +614,9 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: JSON only requests for now
-      req.setRequestProperty("Content-Type",  "application/json")
-      req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Content-Type",  this.defaultMediaType)
+      req.setRequestProperty("Prefer",        this.defaultRepDetailsPrefer)
+      req.setRequestProperty("Accept",        this.defaultMediaType)
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
       req.setRequestProperty("If-Match",      version_uid)
 
@@ -649,7 +668,6 @@ class OpenEhrRestClient {
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
 
-
       return null // no compo is returned if there is an error
    }
 
@@ -670,9 +688,8 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: JSON only requests for now
-      req.setRequestProperty("Content-Type",  "application/json")
-      //req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Content-Type",  this.defaultMediaType)
+      req.setRequestProperty("Accept",        this.defaultMediaType)
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
 
@@ -716,7 +733,6 @@ class OpenEhrRestClient {
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
 
-
       return null // no compo is returned if there is an error
    }
 
@@ -735,9 +751,9 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: JSON only requests for now
-      req.setRequestProperty("Content-Type",  "application/json")
-      req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Content-Type",  this.defaultMediaType)
+      req.setRequestProperty("Prefer",        this.defaultRepDetailsPrefer)
+      req.setRequestProperty("Accept",        this.defaultMediaType)
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
 
@@ -792,7 +808,6 @@ class OpenEhrRestClient {
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
 
-
       return null // no compo is returned if there is an error
    }
 
@@ -810,9 +825,9 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: JSON only requests for now
-      req.setRequestProperty("Content-Type",  "application/json")
-      req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Content-Type",  this.defaultMediaType)
+      req.setRequestProperty("Prefer",        this.defaultRepDetailsPrefer)
+      req.setRequestProperty("Accept",        this.defaultMediaType)
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
 
@@ -864,7 +879,6 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
-
 
       return null // no compo is returned if there is an error
    }
