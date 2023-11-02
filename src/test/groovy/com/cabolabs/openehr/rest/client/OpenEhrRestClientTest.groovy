@@ -38,17 +38,18 @@ class OpenEhrRestClientTest extends Specification {
 
       boolean performAuth = System.getenv('SUT_API_PERFORM_AUTH') ?: Boolean.parseBoolean(properties.sut_api_perform_auth)
       client = new OpenEhrRestClient(
-              System.getenv('SUT_API_URL') ?: properties.sut_api_url,
-              System.getenv('SUT_API_AUTH_URL') ?: properties.sut_api_auth_url,
-              System.getenv('SUT_API_ADMIN_URL') ?: properties.sut_api_admin_url,
-              performAuth
+         System.getenv('SUT_API_URL') ?: properties.sut_api_url,
+         System.getenv('SUT_API_AUTH_URL') ?: properties.sut_api_auth_url,
+         System.getenv('SUT_API_ADMIN_URL') ?: properties.sut_api_admin_url,
+         performAuth
       )
       client.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
 
-      if (performAuth) {
-            // set required header for POST endpoints
-            client.auth("admin@cabolabs.com", "admin") // TODO: set on config file
-            auth = true // TODO: actually check the auth result is OK
+      if (performAuth)
+      {
+         // set required header for POST endpoints
+         client.auth("admin@cabolabs.com", "admin") // TODO: set on config file
+         // TODO: actually check the auth result is OK
       }
       // Instant now = Instant.now()
       // ZonedDateTime zdt = ZonedDateTime.ofInstant(now, ZoneOffset.UTC) //ZoneId.systemDefault()
