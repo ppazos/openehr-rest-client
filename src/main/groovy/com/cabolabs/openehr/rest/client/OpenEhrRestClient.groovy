@@ -393,6 +393,56 @@ class OpenEhrRestClient {
       return null // no ehr is returned if there is an error
    }
 
+   EhrDto getEhr(String ehr_id)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      def get = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
+
+      get.setRequestMethod("GET")
+      get.setDoOutput(true)
+
+      //get.setRequestProperty("Content-Type", "application/json") // add to send a status
+      //get.setRequestProperty("Prefer", "return=representation")
+      get.setRequestProperty("Accept", "application/json")
+      get.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = get.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = get.getErrorStream().getText()
+      }
+
+      def status = get.getResponseCode()
+
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
+      if (status.equals(200))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         def ehr = parser.parseEhrDto(response_body)
+         return ehr
+      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+      return null // no ehr is returned if there is an error
+   }
+
+   // COMPOSITION
+
    Composition createComposition(String ehr_id, Composition compo)
    {
       if (!this.token)
@@ -463,6 +513,141 @@ class OpenEhrRestClient {
 
       return null // no compo is returned if there is an error
    }
+
+   Composition getComposition(String ehr_id, String version_uid)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      def req = new URL("${this.baseUrl}/ehr/${ehr_id}/composition/${version_uid}").openConnection()
+
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only for now
+      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = req.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = req.getErrorStream().getText()
+      }
+
+
+      def status = req.getResponseCode()
+
+      if (status.equals(200))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         def compo_out = parser.parseJson(response_body)
+         return compo_out
+      }
+
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+
+      return null // no compo is returned if there is an error
+   }
+
+   /**
+    * version_uid is the VERSION.uid of the object to be updated, in the format versioned_object_id::system_id::version
+    */
+   Composition updateComposition(String ehr_id, Composition compo, String version_uid)
+   {
+      if (!this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+
+      def parts = version_uid.split('::')
+      if (parts.size() < 3)
+      {
+         throw new Exception("Wrong format for version_uid")
+      }
+      def versioned_object_id = parts[0]
+
+      def req = new URL("${this.baseUrl}/ehr/${ehr_id}/composition/${versioned_object_id}").openConnection()
+
+
+      req.setRequestMethod("PUT")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only requests for now
+      req.setRequestProperty("Content-Type",  "application/json")
+      req.setRequestProperty("Prefer",        "return=representation")
+      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+      req.setRequestProperty("If-Match",      version_uid)
+
+
+      // required commiter header
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
+
+      // TODO: this is the same code as in POST composition
+      def serializer = new OpenEhrJsonSerializer()
+      def body = serializer.serialize(compo)
+
+      req.getOutputStream().write(body.getBytes("UTF-8"));
+
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = req.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = req.getErrorStream().getText()
+      }
+
+      def status = req.getResponseCode()
+
+      println status
+
+      // NOTE: the openEHR API responds 200 for updates
+      // TODO: need to check for other 2xx codes and report a warning since it's not strictly compliant
+      if (status.equals(200))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         def compo_out = parser.parseJson(response_body)
+         return compo_out
+      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+
+      return null // no compo is returned if there is an error
+   }
+
+   // TEMPLATE
 
    // TODO: we need a way to serialize OperationalTemplate to XML in openEHR-OPT
    def uploadTemplate(String opt)
@@ -680,10 +865,8 @@ class OpenEhrRestClient {
 
 
    /**
-   getEhr
    updateEhrStatus
-   getComposition
-   updateComposition
+   getComposition at time
    createActor
    updateActor
    getActor

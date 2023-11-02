@@ -18,16 +18,22 @@ import com.cabolabs.openehr.formats.OpenEhrJsonParserQuick
 
 import groovy.json.JsonSlurper
 
+import java.time.*
+
 class OpenEhrRestClientTest extends Specification {
 
    static def client
 
    static boolean auth = false
 
+   static Random rand = new Random()
+
+   static Properties properties
+
    def setup()
    {
       // read values from config file
-      def properties = new Properties()
+      properties = new Properties()
 
       this.getClass().getResource('/application.properties').withInputStream {
          properties.load(it)
@@ -37,9 +43,9 @@ class OpenEhrRestClientTest extends Specification {
       if (!auth)
       {
          client = new OpenEhrRestClient(
-            properties.sut_api_url,
-            properties.sut_api_auth_url,
-            properties.sut_api_admin_url
+            System.getenv('SUT_API_URL') ?: properties.sut_api_url,
+            System.getenv('SUT_API_AUTH_URL') ?: properties.sut_api_auth_url,
+            System.getenv('SUT_API_ADMIN_URL') ?: properties.sut_api_admin_url
          )
 
          // set required header for POST endpoints
@@ -49,6 +55,31 @@ class OpenEhrRestClientTest extends Specification {
 
          auth = true // TODO: actually check the auth result is OK
       }
+
+
+      // Instant now = Instant.now()
+      // ZonedDateTime zdt = ZonedDateTime.ofInstant(now, ZoneOffset.UTC) //ZoneId.systemDefault()
+      // System.out.println( "Date is: " + zdt )
+
+      // println zdt.format("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+
+      ZonedDateTime.metaClass.static.nowFormatted = {
+         def ext_datetime_utc = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+         ZonedDateTime zdt = ZonedDateTime.ofInstant(Instant.now(), ZoneOffset.UTC)
+         return zdt.format(ext_datetime_utc)
+      }
+
+      /* can't use date.format since Groovy 2.5 groovy-dateutil module was removed from groovy-core
+      Date.metaClass.static.nowFormatted = {
+         def ext_datetime_utc = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+         return new Date().format(ext_datetime_utc, TimeZone.getTimeZone("UTC"))
+      }
+
+      Date.metaClass.formatted = {
+         def ext_datetime_utc = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+         return delegate.format(ext_datetime_utc, TimeZone.getTimeZone("UTC"))
+      }
+      */
    }
 
 
@@ -81,11 +112,10 @@ class OpenEhrRestClientTest extends Specification {
          client.truncateServer()
 
 
-      // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
+      // NOTE: all subject_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patient
       where:
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
    }
-
 
    @Unroll
    def "B.1.b. create ehr twice"()
@@ -108,6 +138,8 @@ class OpenEhrRestClientTest extends Specification {
       then:
          ehr2 == null
          client.lastError.result.code == 'EHRSERVER::API::RESPONSE_CODES::99213'
+
+         // NOTE: error messages might be left out of the formal onformance
          client.lastError.result.message == "EHR with ehr_id ${ehr1.ehr_id.value} already exists, ehr_id must be unique"
 
 
@@ -120,6 +152,179 @@ class OpenEhrRestClientTest extends Specification {
       where:
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
    }
+
+
+
+   def "B.3.a. get existing ehr"()
+   {
+      when:
+         def ehr = client.createEhr()
+         def get_ehr = client.getEhr(ehr.ehr_id.value)
+      
+      then:
+         get_ehr != null
+         ehr.ehr_id.value == get_ehr.ehr_id.value
+
+      cleanup:
+         client.truncateServer()
+   }
+
+   // TODO: B.3.b.
+
+   def "B.3.c. get non existing ehr"()
+   {
+      when:
+         def get_ehr = client.getEhr('non-existing-id')
+      
+      then:
+         get_ehr == null
+         client.lastError != null
+         client.lastError.result.message == error_message_replace_values(properties.error_ehr_not_found_msg, ['non-existing-id'])
+
+      cleanup:
+         client.truncateServer()
+   }
+
+
+
+   def "B.4.a. get composition at version"()
+   {
+      when:
+         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser = new OpenEhrJsonParserQuick()
+         def compo = parser.parseJson(json_compo)
+         def ehr = client.createEhr()
+
+         def out_composition = client.createComposition(ehr.ehr_id.value, compo)
+         def get_composition = client.getComposition(ehr.ehr_id.value, out_composition.uid.value)
+
+      then:
+         get_composition != null
+         out_composition.uid.value == get_composition.uid.value
+         out_composition.archetype_node_id == get_composition.archetype_node_id
+         out_composition.archetype_details.template_id.value == get_composition.archetype_details.template_id.value
+
+      cleanup:
+         client.truncateServer()
+   }
+
+   def "B.4.b. get composition at version, version doesn't exist"()
+   {
+      when:
+         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser = new OpenEhrJsonParserQuick()
+         def compo = parser.parseJson(json_compo)
+         def ehr = client.createEhr()
+
+         def get_composition = client.getComposition(ehr.ehr_id.value, 'xxx.yyy.v1')
+
+      then:
+         get_composition == null
+
+         // this is a way to check the error message and leave the error message be configurable for each SUT
+         // the path where the error message is located in the response and the expected error message are configured
+         // the expected error message has configurable arguments (for the variable content) in the form {0} {1} ... which are replaced here for the expected values
+         get_at_path(client.lastError, properties.error_composition_not_found_path) == error_message_replace_values(properties.error_composition_not_found_msg, ['xxx.yyy.v1'])
+
+
+      cleanup:
+         client.truncateServer()
+   }
+
+
+   def "B.4.c. get composition at version, ehr doesn't exist"()
+   {
+      when:
+         def get_composition = client.getComposition('xxxxxxxx', 'xxx.yyy.v1')
+
+      then:
+         get_composition == null
+
+         get_at_path(client.lastError, properties.error_ehr_not_found_path) == error_message_replace_values(properties.error_ehr_not_found_msg, ['xxxxxxxx'])
+
+         //println client.lastError
+
+      cleanup:
+         client.truncateServer()
+   }
+
+
+   // B.6. CREATE COMPOSITION
+
+   def "B.6.a. create new event composition"()
+   {
+      when:
+         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser = new OpenEhrJsonParserQuick()
+         def compo = parser.parseJson(json_compo)
+         def ehr = client.createEhr()
+
+         def out_composition = client.createComposition(ehr.ehr_id.value, compo)
+
+         // check the compo exists in the server
+         def get_composition = client.getComposition(ehr.ehr_id.value, out_composition.uid.value)
+
+      then:
+         out_composition != null
+         out_composition.uid.value != null
+         get_composition != null
+         get_composition.uid.value == out_composition.uid.value
+
+
+      cleanup:
+         // server cleanup
+         client.truncateServer()
+   }
+
+
+   // B.7. UPDATE COMPOSITION
+
+   def "B.7.a. update an existing event composition"()
+   {
+      when:
+         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
+         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser = new OpenEhrJsonParserQuick()
+         def compo = parser.parseJson(json_compo)
+         def ehr = client.createEhr()
+
+         def out_composition = client.createComposition(ehr.ehr_id.value, compo)
+
+         // there is a problem with the update if it comes microseconds after the create for updating the created compo, there is a race condition when indexing.
+         //sleep(5000)
+
+         // NOTE: the compo should be updated but is not needed for this test so we use the same compo as the create
+         def update_composition = client.updateComposition(ehr.ehr_id.value, compo, out_composition.uid.value)
+
+      then:
+         out_composition != null
+         out_composition.uid.value != null
+         update_composition != null
+         update_composition.uid.value.split("::")[0] == out_composition.uid.value.split("::")[0]
+         update_composition.uid.value.split("::")[1] == out_composition.uid.value.split("::")[1]
+         Integer.parseInt(update_composition.uid.value.split("::")[2]) == Integer.parseInt(out_composition.uid.value.split("::")[2]) + 1
+
+
+      //cleanup:
+         // server cleanup
+         //client.truncateServer()
+   }
+
 
 
    private def create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
@@ -213,45 +418,49 @@ class OpenEhrRestClientTest extends Specification {
    {
       // data_set_no | is_queryable | is_modifiable | has_status | subject_id | other_details | ehr_id
       return [
-         [ null,       true,          true,           false,       null,        null,           null    ],
-         [ null,       true,          true,           false,       null,        null,           '7029bd9b-0295-4313-9dd2-da070223aed0'    ],
-         [ 1,          true,          true,           true,        '11111',     null,           null    ],
-         [ 2,          true,          false,          true,        '22222',     null,           null    ],
-         [ 3,          false,         true,           true,        '33333',     null,           null    ],
-         [ 4,          false,         false,          true,        '44444',     null,           null    ],
-         [ 5,          true,          true,           true,        '55555',     true,           null    ],
-         [ 6,          true,          false,          true,        '66666',     true,           null    ],
-         [ 7,          false,         true,           true,        '77777',     true,           null    ],
-         [ 8,          false,         false,          true,        '88888',     true,           null    ],
-         [ 9,          true,          true,           true,        '99999',     null,           '11109' ],
-         [ 10,         true,          false,          true,        '101010',    null,           '22210' ],
-         [ 11,         false,         true,           true,        '111111',    null,           '33311' ],
-         [ 12,         false,         false,          true,        '121212',    null,           '44412' ],
-         [ 13,         true,          true,           true,        '131313',    true,           '55513' ],
-         [ 14,         true,          false,          true,        '141414',    true,           '66614' ],
-         [ 15,         false,         true,           true,        '151515',    true,           '77715' ],
-         [ 16,         false,         false,          true,        '161616',    true,           '88816' ],
-         [ 17,         true,          true,           true,        null,        null,           null    ],
-         [ 18,         true,          false,          true,        null,        null,           null    ],
-         [ 19,         false,         true,           true,        null,        null,           null    ],
-         [ 20,         false,         false,          true,        null,        null,           null    ],
-         [ 21,         true,          true,           true,        null,        true,           null    ],
-         [ 22,         true,          false,          true,        null,        true,           null    ],
-         [ 23,         false,         true,           true,        null,        true,           null    ],
-         [ 24,         false,         false,          true,        null,        true,           null    ],
-         [ 25,         true,          true,           true,        null,        null,           '111111'],
-         [ 26,         true,          false,          true,        null,        null,           '222222'],
-         [ 27,         false,         true,           true,        null,        null,           '333333'],
-         [ 28,         false,         false,          true,        null,        null,           '444444'],
-         [ 29,         true,          true,           true,        null,        true,           '555555'],
-         [ 30,         true,          false,          true,        null,        true,           '666666'],
-         [ 31,         false,         true,           true,        null,        true,           '777777'],
-         [ 32,         false,         false,          true,        null,        true,           '888888']
+         [ null,       true,          true,           false,       null,            null,           null    ],
+         [ null,       true,          true,           false,       null,            null,           randomUUID() ],
+         [ 1,          true,          true,           true,        randomUUID(),    null,           null    ],
+         [ 2,          true,          false,          true,        randomUUID(),    null,           null    ],
+         [ 3,          false,         true,           true,        randomUUID(),    null,           null    ],
+         [ 4,          false,         false,          true,        randomUUID(),    null,           null    ],
+         [ 5,          true,          true,           true,        randomUUID(),    true,           null    ],
+         [ 6,          true,          false,          true,        randomUUID(),    true,           null    ],
+         [ 7,          false,         true,           true,        randomUUID(),    true,           null    ],
+         [ 8,          false,         false,          true,        randomUUID(),    true,           null    ],
+         [ 9,          true,          true,           true,        randomUUID(),    null,           randomUUID() ],
+         [ 10,         true,          false,          true,        randomUUID(),    null,           randomUUID() ],
+         [ 11,         false,         true,           true,        randomUUID(),    null,           randomUUID() ],
+         [ 12,         false,         false,          true,        randomUUID(),    null,           randomUUID() ],
+         [ 13,         true,          true,           true,        randomUUID(),    true,           randomUUID() ],
+         [ 14,         true,          false,          true,        randomUUID(),    true,           randomUUID() ],
+         [ 15,         false,         true,           true,        randomUUID(),    true,           randomUUID() ],
+         [ 16,         false,         false,          true,        randomUUID(),    true,           randomUUID() ],
+         [ 17,         true,          true,           true,        null,            null,           null    ],
+         [ 18,         true,          false,          true,        null,            null,           null    ],
+         [ 19,         false,         true,           true,        null,            null,           null    ],
+         [ 20,         false,         false,          true,        null,            null,           null    ],
+         [ 21,         true,          true,           true,        null,            true,           null    ],
+         [ 22,         true,          false,          true,        null,            true,           null    ],
+         [ 23,         false,         true,           true,        null,            true,           null    ],
+         [ 24,         false,         false,          true,        null,            true,           null    ],
+         [ 25,         true,          true,           true,        null,            null,           randomUUID()],
+         [ 26,         true,          false,          true,        null,            null,           randomUUID()],
+         [ 27,         false,         true,           true,        null,            null,           randomUUID()],
+         [ 28,         false,         false,          true,        null,            null,           randomUUID()],
+         [ 29,         true,          true,           true,        null,            true,           randomUUID()],
+         [ 30,         true,          false,          true,        null,            true,           randomUUID()],
+         [ 31,         false,         true,           true,        null,            true,           randomUUID()],
+         [ 32,         false,         false,          true,        null,            true,           randomUUID()   ]
       ]
    }
 
+   static randomUUID() {
+      return java.util.UUID.randomUUID().toString()
+   }
 
-   def "create composition minimal evaluation 100 times"()
+
+   def "LOAD. create composition minimal evaluation 100 times"()
    {
       when:
          String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
@@ -274,16 +483,14 @@ class OpenEhrRestClientTest extends Specification {
             client.createComposition(ehr.ehr_id.value, compo)
          }
 
-         /*
-         def compo_out = client.createComposition(ehr.ehr_id.value, compo)
+         // def compo_out = client.createComposition(ehr.ehr_id.value, compo)
 
-         println compo_out
+         // println compo_out
 
-         if (!compo_out)
-         {
-            println client.lastError
-         }
-         */
+         // if (!compo_out)
+         // {
+         //    println client.lastError
+         // }
 
          //client.lastError.result.code == 'EHRSERVER::API::RESPONSE_CODES::99213'
          //client.lastError.result.message
@@ -297,54 +504,239 @@ class OpenEhrRestClientTest extends Specification {
          }
 
 
-      cleanup:
-         // server cleanup
-         client.truncateServer()
-
+      // cleanup:
+      //    // server cleanup
+      //    client.truncateServer()
    }
 
-
-   def "create demographic family trees"()
+   def "LOAD. create demographic family trees"()
    {
       when:
-         String opt           = this.getClass().getResource('/generic_person.opt').text
-         String sample_person = this.getClass().getResource('/generic_person.json').text
+         //String opt_person    = this.getClass().getResource('/generic_person.opt').text
+         //String sample_person = this.getClass().getResource('/generic_person.json').text // FIXME: add person complete OPT and example
+
+         // provides definition to the roles included in thet generic_person.json
+         String opt_role      = this.getClass().getResource('/generic_role_complete.opt').text
+         String opt_person    = this.getClass().getResource('/person_complete.opt').text
+         String sample_person = this.getClass().getResource('/person_complete.json').text
 
          // this relationship is a "natural child" relationship, so the source is the child and the target is the parent.
+         String opt_relationship    = this.getClass().getResource('/generic_relationship.opt').text
          String sample_relationship = this.getClass().getResource('/generic_relationship.json').text
-         String demographics  = this.getClass().getResource('/demographics.json').text
+
+         // OPT for EHR_STATUS
+         String opt_ehr_status      = this.getClass().getResource('/ehr_status_any_en_v1.opt').text
+
+         // OPTs for COMPOSITIONS
+         String opt_demographics    = this.getClass().getResource('/demographics.opt').text
+         String opt_encounter       = this.getClass().getResource('/encounter_with_coded_diagnosis.opt').text
+         String opt_vital_signs     = this.getClass().getResource('/vital_signs_monitoring.opt').text
+
+         // Sample COMPOSITIONS
+         String sample_demographics = this.getClass().getResource('/demographics.json').text
+         String sample_vital_signs  = this.getClass().getResource('/vital_signs_monitoring.json').text
+         String sample_encounter    = this.getClass().getResource('/encounter_with_coded_diagnosis.json').text // NOTE: the diagnosis is dynamic below
 
 
+         // Demographic data
+         String demographic_data    = this.getClass().getResource('/demographic_data.json').text
+
+         // JSON demographic data
          def json_parser = new JsonSlurper()
-         def parsed_demographics = json_parser.parseText(demographics)
+         def parsed_demographics = json_parser.parseText(demographic_data)
 
+         // demographic
+         client.uploadTemplate(opt_person)
+         client.uploadTemplate(opt_role)
+         client.uploadTemplate(opt_relationship)
 
-         client.uploadTemplate(opt)
+         // ehr
+         client.uploadTemplate(opt_ehr_status)
+         client.uploadTemplate(opt_encounter)
+         client.uploadTemplate(opt_vital_signs)
+         client.uploadTemplate(opt_demographics)
+
+         sleep(5000) // allow OPTS to be indexed
 
 
          def parser = new OpenEhrJsonParserQuick()
          parser.setSchemaFlavorAPI()
 
-         def person = parser.parseActorDto(sample_person)
+
+         // prototype person and relationship that will be customized below before committing to the server
+         def person       = parser.parseActorDto(sample_person)
          def relationship = parser.parseJson(sample_relationship)
+
+         def demographics = parser.parseJson(sample_demographics)
+         def vital_signs  = parser.parseJson(sample_vital_signs)
+         def encounter    = parser.parseJson(sample_encounter)
 
          //println person.identities[0].details.items[0].value.value
          // println relationship.source.id.value
          // println relationship.target.id.value
 
-
+         // __PERSON_ID__
+         // __FULL_NAME__
+         // __DOB__
+         // __SEX_VALUE__: Mascuilne, Female, Unknown
+         // __SEX_CODE__: at0033, at0034, at0035
 
          def results = []
          def out_person
-         parsed_demographics.people.each { data_person ->
+
+         def systolic_range = (110..160)
+         def diastolic_range = (50..100)
+         def diabetes_diagnosis = [ // parent: 73211009 | Diabetes mellitus (disorder) |
+            '190447002':          'Steroid-induced diabetes',
+            '427089005':          'Diabetes mellitus due to cystic fibrosis',
+            '31321000119102':     'Diabetes mellitus type 1 without retinopathy',
+            '23045005':           'Insulin dependent diabetes mellitus type IA',
+            '237599002':          'Insulin treated type 2 diabetes mellitus',
+            '46635009 ':          'Diabetes mellitus type 1'
+         ]
+         def allergy_diagnosis = [ // parent: 419076005 | Allergic reaction (disorder) |
+            '139841000119108':    'Anaphylaxis caused by allergy skin test',
+            '241933001':          'Peanut-induced anaphylaxis',
+            '15920161000119108':  'Allergic reaction caused by egg protein',
+            '419884005':          'Allergic reaction caused by flea bite'
+         ]
+         def hypertension_diagnosis = [ // 38341003 | Hypertensive disorder, systemic arterial (disorder)
+            '59621000':           'Essential hypertension',
+            '56218007':           'Systolic hypertension',
+            '74451002':           'Secondary diastolic hypertension'
+         ]
+         def diagnosis = [ // list of maps
+            diabetes_diagnosis,
+            allergy_diagnosis,
+            hypertension_diagnosis
+         ]
+
+         parsed_demographics.people.eachWithIndex { data_person, data_set_num ->
+
+            person.details.items[0].items[0].value.id = data_person.nid
 
             //println data_person.name
             // change the name of the sample person
             person.identities[0].details.items[0].value.value = data_person.name
+            person.identities[0].details.items[1].value.value = data_person.dob
+
+            if (data_person.sex == 'M')
+            {
+               person.identities[0].details.items[2].value.value = 'Male'
+               person.identities[0].details.items[2].value.defining_code.code_string = 'at0033'
+            }
+            else if (data_person.sex == 'F')
+            {
+               person.identities[0].details.items[2].value.value = 'Female'
+               person.identities[0].details.items[2].value.defining_code.code_string = 'at0034'
+            }
+            else
+            {
+               person.identities[0].details.items[2].value.value = 'Unknown'
+               person.identities[0].details.items[2].value.defining_code.code_string = 'at0035'
+            }
+
+
+            // ========================================================
+            // creates the person in the server
+            changeCommitHeaders()
             out_person = client.createActor(person)
 
             // save the uid so we can create the relationship for the parent
-            data_person.uid = out_person.uid.value
+            // 0e488aa3-8686-4248-9b28-0d8f97a04c69::ATOMIK::1
+            // since the value contains the system_id and version_tree_id, we need to extract the uuid part
+            data_person.uid = out_person.uid.value.split("::")[0]
+
+            // ========================================================
+            // create the EHR for that person
+            def ehr = create_ehr(data_set_num, true, true, true, data_person.uid, false, false)
+
+            sleep(500) // adds delay to see different commti times
+
+            // ========================================================
+            // create demographic compo
+            demographics.context.start_time.value = ZonedDateTime.nowFormatted()
+
+            // sex: at0003=Male, at0004=Female, at0005=Unknown
+            if (data_person.sex == 'M')
+            {
+               demographics.content[0].data.items[0].value.value = 'Male'
+               demographics.content[0].data.items[0].value.defining_code.code_string = 'at0003'
+            }
+            else if (data_person.sex == 'F')
+            {
+               demographics.content[0].data.items[0].value.value = 'Female'
+               demographics.content[0].data.items[0].value.defining_code.code_string = 'at0004'
+            }
+            else
+            {
+               demographics.content[0].data.items[0].value.value = 'Unknown'
+               demographics.content[0].data.items[0].value.defining_code.code_string = 'at0005'
+            }
+
+            // dob (need to add the time since this is DV_DATE_TIME)
+            demographics.content[0].data.items[1].value.value = data_person.dob +'T00:00:00.000Z'
+
+            changeCommitHeaders()
+            client.createComposition(ehr.ehr_id.value, demographics)
+
+            sleep(500) // adds delay to see different commti times
+
+
+            // ========================================================
+            // create vital signs monitoring compo (X times)
+            //
+            10.times { // 100 vital signs compos per patient
+
+               vital_signs.context.start_time.value = ZonedDateTime.nowFormatted()
+
+               // systolic blood pressure
+               vital_signs.content[0].data.events[0].data.items[0].value.magnitude = rand.nextInt(systolic_range.to - systolic_range.from) + systolic_range.from
+
+               // diastolic blood pressure
+               vital_signs.content[0].data.events[0].data.items[1].value.magnitude = rand.nextInt(diastolic_range.to - diastolic_range.from) + diastolic_range.from
+
+               // temperature
+               vital_signs.content[1].data.events[0].data.items[0].value.magnitude = rand.nextInt(39 - 36) + 36 + (rand.nextInt(10) / 10) // 37.1
+               vital_signs.content[1].data.events[0].data.items[0].value.units = 'Cel' // Celsius
+
+               // pulse
+               vital_signs.content[2].data.events[0].data.items[1].value.magnitude = rand.nextInt(200 - 40) + 40
+
+               // pulse oxymetry
+               vital_signs.content[3].data.events[0].data.items[0].value.numerator = rand.nextInt(100 - 60) + 60
+
+               // respiration rate
+               vital_signs.content[4].data.events[0].data.items[1].value.magnitude = rand.nextInt(100 - 10) + 10
+
+               changeCommitHeaders()
+               client.createComposition(ehr.ehr_id.value, vital_signs)
+
+               sleep(500) // adds delay to see different commti times
+            }
+
+
+            // ========================================================
+            // create encounter with coded diagnosis compo
+            encounter.context.start_time.value = ZonedDateTime.nowFormatted()
+
+            def diagnostic_type_index = rand.nextInt(diagnosis.size())
+            def diagnosis_map = diagnosis[diagnostic_type_index]
+
+            def diagnosis_code = (diagnosis_map.keySet() as List)[rand.nextInt(diagnosis_map.size())]
+            def diagnosis_text = diagnosis_map[diagnosis_code]
+
+            // println diagnosis_code
+            // println diagnosis_text
+
+            encounter.content[1].data.items[0].value.value = diagnosis_text
+            encounter.content[1].data.items[0].value.defining_code.code_string = diagnosis_code
+
+            changeCommitHeaders()
+            client.createComposition(ehr.ehr_id.value, encounter)
+
+            sleep(100) // adds delay to see different commit times
+
 
             results << out_person
          }
@@ -363,6 +755,7 @@ class OpenEhrRestClientTest extends Specification {
 
                relationship.target.id.value = parent.uid // this is the version uid
 
+               changeCommitHeaders()
                results_relationships << client.createRelationship(relationship)
             }
          }
@@ -378,5 +771,66 @@ class OpenEhrRestClientTest extends Specification {
       //cleanup:
          // server cleanup
          //client.truncateServer()
+   }
+
+   private void changeCommitHeaders()
+   {
+      def committer_names = [
+         '1d0e25ca-3858-4b92-a460-11c77689e8e5': "Hayley Byrd",
+         'a71647c7-4328-4361-8f70-7059a6af7398': "Claude Rivera",
+         'f86f242a-6053-4bbe-b624-aaf3100b06c2': "Aine Bonner",
+         '177cf0fb-7b64-4175-84a1-2fd48d67384b': "Kira Bright",
+         '22b9ae6a-b25b-4e0d-b3e8-1f0d4c7fc1c6': "Krish Gould",
+         '3a123211-ed4d-4ff2-a2be-922af1301ea8': "Ellis Hilton",
+         'f0938104-e8c9-403b-8718-b4305091ac1a': "Betty Wheeler",
+         '1e9ec637-0d3a-46f5-bf80-2be7c1190908': "Oskar Wells",
+         'a7dcb6e7-b13c-4e4c-bf7a-a9d00a2b0063': "Aiza Sutherland",
+         '2dc3fc27-8405-417a-b16d-8566f3df794c': "Laila Gill",
+         '27ad20ee-01ee-4779-b13b-bb550ed5dd75': "Byron Cummings",
+         '80764ab1-5d6c-43eb-944f-a21e3d02e275': "Mila Sims",
+         'e82ae122-287c-4754-9d72-fa6d466f3341': "Callie Kennedy",
+         'cd8a4ec9-0cfd-48ba-adb5-bd74df57bc26': "Md Moore",
+         '8964e2ec-c074-4ca7-a7e6-16f9e4d98c92': "Ronan John",
+         '0b697852-91ec-4938-86a6-2ccba6a83fee': "Ameer Owens",
+         'd2c5e0d4-e27f-40cb-a036-11c7be3ef9d2': "Tanya Matthams",
+         'f909ee96-fd28-4df3-9d35-24ed054dd234': "Jago Gross",
+         '839fd8f1-3603-43ae-89ac-8ed65a61eef8': "Louie Edwards",
+         'fba9382a-19a4-4651-a941-0faf3a42239f': "Hamzah Scott",
+      ]
+
+      def uid = (committer_names.keySet() as List)[rand.nextInt(committer_names.size())]
+      def name = committer_names[uid]
+
+      client.setCommitterHeader('name="'+ name +'", external_ref.id="'+ uid +'", external_ref.namespace="demographic", external_ref.type="PERSON"')
+   }
+
+
+   // UTIL METHODS
+
+   /**
+    * Replaces arguments in error messages: "This {0} is an error for {1}", [a, b] => "This a is an error for b"
+    */
+   private error_message_replace_values(String error_msg, List values)
+   {
+      for (int i = 0; i < values.size(); i++)
+      {
+         error_msg = error_msg.replace("{$i}", values[i].toString())
+      }
+
+      return error_msg
+   }
+
+   /**
+    * object is a JSON parsed as a Map, we support JSON only for now!
+    */
+   private get_at_path(Map object, String path)
+   {
+      // path = a.b.c
+      // path_quoted = "a"."b"."c"
+      def path_quoted = '"'+ path.replaceAll('\\.', '"."') + '"'
+      def command = ' o.'+ path_quoted
+
+      // access object.a.b.c, where the object is named 'o' in the command
+      Eval.me('o', object, command)
    }
 }

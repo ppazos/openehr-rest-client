@@ -31,3 +31,5 @@ build
 # IntelliJ project files
 *.iml
 .idea
+
+!/gradle/wrapper/gradle-wrapper.jar
