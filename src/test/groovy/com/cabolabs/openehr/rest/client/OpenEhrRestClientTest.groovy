@@ -107,11 +107,6 @@ class OpenEhrRestClientTest extends Specification {
             ehr.ehr_status.subject.external_ref.id.value == subject_id
          }
 
-      cleanup:
-         // server cleanup
-         client.truncateServer()
-
-
       // NOTE: all subject_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patient
       where:
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
@@ -143,17 +138,10 @@ class OpenEhrRestClientTest extends Specification {
          client.lastError.result.message == "EHR with ehr_id ${ehr1.ehr_id.value} already exists, ehr_id must be unique"
 
 
-      cleanup:
-         // server cleanup
-         client.truncateServer()
-
-
       // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
       where:
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
    }
-
-
 
    def "B.3.a. get existing ehr"()
    {
@@ -165,8 +153,6 @@ class OpenEhrRestClientTest extends Specification {
          get_ehr != null
          ehr.ehr_id.value == get_ehr.ehr_id.value
 
-      cleanup:
-         client.truncateServer()
    }
 
    // TODO: B.3.b.
@@ -181,8 +167,6 @@ class OpenEhrRestClientTest extends Specification {
          client.lastError != null
          client.lastError.result.message == error_message_replace_values(properties.error_ehr_not_found_msg, ['non-existing-id'])
 
-      cleanup:
-         client.truncateServer()
    }
 
 
@@ -208,8 +192,6 @@ class OpenEhrRestClientTest extends Specification {
          out_composition.archetype_node_id == get_composition.archetype_node_id
          out_composition.archetype_details.template_id.value == get_composition.archetype_details.template_id.value
 
-      cleanup:
-         client.truncateServer()
    }
 
    def "B.4.b. get composition at version, version doesn't exist"()
@@ -235,8 +217,6 @@ class OpenEhrRestClientTest extends Specification {
          get_at_path(client.lastError, properties.error_composition_not_found_path) == error_message_replace_values(properties.error_composition_not_found_msg, ['xxx.yyy.v1'])
 
 
-      cleanup:
-         client.truncateServer()
    }
 
 
@@ -251,9 +231,6 @@ class OpenEhrRestClientTest extends Specification {
          get_at_path(client.lastError, properties.error_ehr_not_found_path) == error_message_replace_values(properties.error_ehr_not_found_msg, ['xxxxxxxx'])
 
          //println client.lastError
-
-      cleanup:
-         client.truncateServer()
    }
 
 
@@ -282,10 +259,6 @@ class OpenEhrRestClientTest extends Specification {
          get_composition != null
          get_composition.uid.value == out_composition.uid.value
 
-
-      cleanup:
-         // server cleanup
-         client.truncateServer()
    }
 
 
@@ -319,10 +292,6 @@ class OpenEhrRestClientTest extends Specification {
          update_composition.uid.value.split("::")[1] == out_composition.uid.value.split("::")[1]
          Integer.parseInt(update_composition.uid.value.split("::")[2]) == Integer.parseInt(out_composition.uid.value.split("::")[2]) + 1
 
-
-      //cleanup:
-         // server cleanup
-         //client.truncateServer()
    }
 
 
