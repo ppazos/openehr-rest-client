@@ -28,17 +28,19 @@ class OpenEhrRestClient {
    String baseUrl // = 'http://192.168.1.110:8080/ehrbase/rest/openehr/v1'
    String baseAuthUrl
    String baseAdminUrl
+   boolean performAuth
    String token
    Map lastError = [:] // parsed JSON that contains an error response
    Map headers = [:] // extra headers to use in the POST endpoints like committer
 
    // TODO: refactor to share common code
 
-   OpenEhrRestClient (String baseUrl, String baseAuthUrl, String baseAdminUrl)
+   OpenEhrRestClient (String baseUrl, String baseAuthUrl, String baseAdminUrl, boolean performAuth)
    {
       this.baseUrl = baseUrl
       this.baseAuthUrl = baseAuthUrl
       this.baseAdminUrl = baseAdminUrl
+      this.performAuth = performAuth
    }
 
    // value example: 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"'
@@ -132,7 +134,7 @@ class OpenEhrRestClient {
    // FIXME: this is not used
    private String do_create_ehr_request(EhrStatus ehr_status, String ehr_id)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -153,7 +155,7 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr()
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -210,7 +212,7 @@ class OpenEhrRestClient {
 
    EhrDto createEhr(String ehr_id)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -269,7 +271,7 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr(EhrStatus ehr_status)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -336,7 +338,7 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr(EhrStatus ehr_status, String ehr_id)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -395,7 +397,7 @@ class OpenEhrRestClient {
 
    EhrDto getEhr(String ehr_id)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -445,7 +447,7 @@ class OpenEhrRestClient {
 
    Composition createComposition(String ehr_id, Composition compo)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -516,7 +518,7 @@ class OpenEhrRestClient {
 
    Composition getComposition(String ehr_id, String version_uid)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -569,7 +571,7 @@ class OpenEhrRestClient {
     */
    Composition updateComposition(String ehr_id, Composition compo, String version_uid)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -652,7 +654,7 @@ class OpenEhrRestClient {
    // TODO: we need a way to serialize OperationalTemplate to XML in openEHR-OPT
    def uploadTemplate(String opt)
    {
-       if (!this.token)
+       if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -717,7 +719,7 @@ class OpenEhrRestClient {
 
    ActorDto createActor(ActorDto actor)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -792,7 +794,7 @@ class OpenEhrRestClient {
 
    PartyRelationship createRelationship(PartyRelationship relationship)
    {
-      if (!this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
