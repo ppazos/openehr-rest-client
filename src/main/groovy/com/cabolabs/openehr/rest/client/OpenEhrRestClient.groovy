@@ -865,7 +865,6 @@ class OpenEhrRestClient {
 
 
    /**
-   getEhr
    updateEhrStatus
    getComposition at time
    createActor
