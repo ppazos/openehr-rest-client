@@ -23,10 +23,10 @@ repositories {
 
 dependencies {
     // Use the latest Groovy version for building this library
-    implementation 'org.codehaus.groovy:groovy-all:2.5.14'
+    implementation 'org.codehaus.groovy:groovy-all:3.0.17'
 
     // Use the awesome Spock testing and specification framework
-    testImplementation 'org.spockframework:spock-core:1.3-groovy-2.5'
+    testImplementation 'org.spockframework:spock-core:2.3-groovy-3.0'
 
     implementation 'com.github.ppazos:openEHR-OPT:v1.9.6'
 
@@ -40,4 +40,6 @@ test {
         outputs.upToDateWhen {false}
         showStandardStreams = true
     }
+    useJUnitPlatform()
 }
+
