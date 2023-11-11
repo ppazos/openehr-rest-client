@@ -28,6 +28,7 @@ class OpenEhrRestClientTest extends Specification {
 
    static Properties properties
 
+
    def setupSpec()
    {
       // read values from config file
@@ -36,12 +37,14 @@ class OpenEhrRestClientTest extends Specification {
          properties.load(it)
       }
 
-      boolean performAuth = System.getenv('SUT_API_PERFORM_AUTH') ?: Boolean.parseBoolean(properties.sut_api_perform_auth)
+      boolean performAuth = Boolean.parseBoolean(getProperty("sut_api_perform_auth"))
+
       client = new OpenEhrRestClient(
-         System.getenv('SUT_API_URL') ?: properties.sut_api_url,
-         System.getenv('SUT_API_AUTH_URL') ?: properties.sut_api_auth_url,
-         System.getenv('SUT_API_ADMIN_URL') ?: properties.sut_api_admin_url,
-         performAuth
+              getProperty("sut_api_url"),
+              getProperty("sut_api_auth_url"),
+              getProperty("sut_api_admin_url"),
+              performAuth,
+              Boolean.parseBoolean(getProperty("sut_api_perform_db_truncation"))
       )
       client.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
 
@@ -74,6 +77,10 @@ class OpenEhrRestClientTest extends Specification {
          return delegate.format(ext_datetime_utc, TimeZone.getTimeZone("UTC"))
       }
       */
+   }
+
+   String getProperty(String propertyName) {
+      return System.getenv(propertyName.toUpperCase()) ?: properties[propertyName]
    }
 
 

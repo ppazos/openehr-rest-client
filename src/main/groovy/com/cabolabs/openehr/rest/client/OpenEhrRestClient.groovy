@@ -29,18 +29,22 @@ class OpenEhrRestClient {
    String baseAuthUrl
    String baseAdminUrl
    boolean performAuth
+   boolean performDbTruncation
    String token
    Map lastError = [:] // parsed JSON that contains an error response
    Map headers = [:] // extra headers to use in the POST endpoints like committer
 
    // TODO: refactor to share common code
 
-   OpenEhrRestClient (String baseUrl, String baseAuthUrl, String baseAdminUrl, boolean performAuth)
-   {
+   OpenEhrRestClient (String baseUrl, String baseAuthUrl,
+                      String baseAdminUrl,
+                      boolean performAuth, boolean performDbTruncation
+   ) {
       this.baseUrl = baseUrl
       this.baseAuthUrl = baseAuthUrl
       this.baseAdminUrl = baseAdminUrl
       this.performAuth = performAuth
+      this.performDbTruncation = performDbTruncation
    }
 
    // value example: 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"'
@@ -896,9 +900,11 @@ class OpenEhrRestClient {
 
    def truncateServer()
    {
-      def req = new URL(this.baseAdminUrl +"/truncate_all").openConnection()
-      req.setRequestProperty("Authorization", "Bearer "+ this.token)
-      int code = req.getResponseCode()
-      //req.getInputStream().getText()
+      if (performDbTruncation) {
+         def req = new URL(this.baseAdminUrl + "/truncate_all").openConnection()
+         req.setRequestProperty("Authorization", "Bearer " + this.token)
+         int code = req.getResponseCode()
+         //req.getInputStream().getText()
+      }
    }
 }
