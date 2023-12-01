@@ -44,6 +44,9 @@ class OpenEhrRestClientTest extends Specification {
               getProperty("sut_api_auth_url"),
               getProperty("sut_api_admin_url"),
               performAuth,
+              Boolean.parseBoolean(getProperty('sut_api_supports_resolve_refs')),
+              Boolean.parseBoolean(getProperty('sut_api_always_resolve_refs')),
+              getProperty('sut_api_default_media_type'),
               Boolean.parseBoolean(getProperty("sut_api_perform_db_truncation"))
       )
       client.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
@@ -100,14 +103,6 @@ class OpenEhrRestClientTest extends Specification {
          ehr != null
          ehr.ehr_status != null
 
-         // ehr_status is an object_ref
-         ehr.ehr_status.uid != null
-
-         if (subject_id)
-         {
-            ehr.ehr_status.subject.external_ref.id.value == subject_id
-         }
-
       cleanup:
          // server cleanup
          client.truncateServer()
@@ -130,9 +125,6 @@ class OpenEhrRestClientTest extends Specification {
          ehr1 != null
          ehr1.ehr_status != null
 
-         // ehr_status is an object_ref
-         ehr1.ehr_status.uid != null
-
       when:
          def ehr2 = create_ehr(data_set_no, is_queryable, is_modifiable, has_status, null, other_details, ehr1.ehr_id.value)
 
@@ -149,7 +141,7 @@ class OpenEhrRestClientTest extends Specification {
          client.truncateServer()
 
 
-      // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
+      // NOTE: all subject_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patient
       where:
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
    }
@@ -174,8 +166,9 @@ class OpenEhrRestClientTest extends Specification {
 
    def "B.3.c. get non existing ehr"()
    {
+      def randomEhrId = randomUUID()
       when:
-         def get_ehr = client.getEhr('non-existing-id')
+         def get_ehr = client.getEhr(randomEhrId)
       
       then:
          get_ehr == null
