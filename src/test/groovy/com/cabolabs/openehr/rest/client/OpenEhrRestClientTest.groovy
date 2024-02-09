@@ -161,7 +161,7 @@ class OpenEhrRestClientTest extends Specification {
       when:
          def ehr = client.createEhr()
          def get_ehr = client.getEhr(ehr.ehr_id.value)
-      
+
       then:
          get_ehr != null
          ehr.ehr_id.value == get_ehr.ehr_id.value
@@ -176,7 +176,7 @@ class OpenEhrRestClientTest extends Specification {
    {
       when:
          def get_ehr = client.getEhr('non-existing-id')
-      
+
       then:
          get_ehr == null
          client.lastError != null
@@ -460,6 +460,8 @@ class OpenEhrRestClientTest extends Specification {
       return java.util.UUID.randomUUID().toString()
    }
 
+
+   // TODO: these two 'tests' should really be data load scripts that use the rest client, maybe putting them in loadEHR
 
    def "LOAD. create composition minimal evaluation 100 times"()
    {
@@ -804,6 +806,38 @@ class OpenEhrRestClientTest extends Specification {
 
       client.setCommitterHeader('name="'+ name +'", external_ref.id="'+ uid +'", external_ref.namespace="demographic", external_ref.type="PERSON"')
    }
+
+
+   /*
+   def "test list queries"()
+   {
+      when:
+         // TODO: create stored queries to get them
+         def queries = client.listQueries()
+
+         def out_composition = client.createComposition(ehr.ehr_id.value, compo)
+
+         // there is a problem with the update if it comes microseconds after the create for updating the created compo, there is a race condition when indexing.
+         //sleep(5000)
+
+         // NOTE: the compo should be updated but is not needed for this test so we use the same compo as the create
+         def update_composition = client.updateComposition(ehr.ehr_id.value, compo, out_composition.uid.value)
+
+      then:
+         out_composition != null
+         out_composition.uid.value != null
+         update_composition != null
+         update_composition.uid.value.split("::")[0] == out_composition.uid.value.split("::")[0]
+         update_composition.uid.value.split("::")[1] == out_composition.uid.value.split("::")[1]
+         Integer.parseInt(update_composition.uid.value.split("::")[2]) == Integer.parseInt(out_composition.uid.value.split("::")[2]) + 1
+
+
+      //cleanup:
+         // server cleanup
+         //client.truncateServer()
+   }
+   */
+
 
 
    // UTIL METHODS

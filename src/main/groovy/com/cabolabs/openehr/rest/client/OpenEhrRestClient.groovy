@@ -889,6 +889,67 @@ class OpenEhrRestClient {
    executeStoredQuery
    */
 
+
+   // QUERY
+
+   def storeQuery(String qualified_name, String version, String type, String query)
+   {
+
+   }
+
+   List listQueries()
+   {
+      if (performAuth && !this.token)
+      {
+         throw new Exception("Not authenticated")
+      }
+
+      def req = new URL("${this.baseUrl}/definition/query").openConnection()
+
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only for now
+      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      String response_body
+
+      try
+      {
+         // this throws an exception if the response status code is not 2xx
+         response_body = req.getInputStream().getText()
+      }
+      catch (Exception e)
+      {
+         // for 4xx errors, the server will return a JSON payload error
+         response_body = req.getErrorStream().getText()
+      }
+
+
+      def status = req.getResponseCode()
+
+      if (status.equals(200))
+      {
+         // def parser = new OpenEhrJsonParserQuick()
+         // def compo_out = parser.parseJson(response_body)
+         // return compo_out
+
+         // TODO: we don't have a standard class for the query structure yet, so we return the JSON object directly
+         def json_parser = new JsonSlurper()
+         return json_parser.parseText(response_body)
+      }
+
+
+      // Expects a JSON error
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+
+      return null // no compo is returned if there is an error
+   }
+
    static String removeBOM(byte[] bytes)
    {
       def inputStream = new ByteArrayInputStream(bytes)
