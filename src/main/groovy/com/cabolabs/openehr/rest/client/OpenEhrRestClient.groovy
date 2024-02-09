@@ -25,26 +25,37 @@ import org.apache.log4j.*
 @Log4j
 class OpenEhrRestClient {
 
-   String baseUrl // = 'http://192.168.1.110:8080/ehrbase/rest/openehr/v1'
-   String baseAuthUrl
-   String baseAdminUrl
+   String  baseUrl // = 'http://192.168.1.110:8080/ehrbase/rest/openehr/v1'
+   String  baseAuthUrl
+   String  baseAdminUrl
    boolean performAuth
    boolean performDbTruncation
-   String token
+   String  token
+
    Map lastError = [:] // parsed JSON that contains an error response
    Map headers = [:] // extra headers to use in the POST endpoints like committer
 
+   ContentTypeEnum accept
+   PreferEnum      prefer
+
    // TODO: refactor to share common code
 
-   OpenEhrRestClient (String baseUrl, String baseAuthUrl,
-                      String baseAdminUrl,
-                      boolean performAuth, boolean performDbTruncation
+   OpenEhrRestClient (
+      String baseUrl,
+      String baseAuthUrl,
+      String baseAdminUrl,
+      boolean performAuth,
+      boolean performDbTruncation,
+      ContentTypeEnum accept = ContentTypeEnum.JSON,
+      PreferEnum prefer      = PreferEnum.REPRESENTATION
    ) {
       this.baseUrl = baseUrl
       this.baseAuthUrl = baseAuthUrl
       this.baseAdminUrl = baseAdminUrl
       this.performAuth = performAuth
       this.performDbTruncation = performDbTruncation
+      this.accept = accept
+      this.prefer = prefer
    }
 
    // value example: 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"'
@@ -90,8 +101,8 @@ class OpenEhrRestClient {
 
       req.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
       //req.setRequestProperty("Content-Type", "application/json") // add to send a status
-      //req.setRequestProperty("Prefer", "return=representation")
-      req.setRequestProperty("Accept", "application/json")
+      //req.setRequestProperty("Prefer",     this.prefer.toString())
+      req.setRequestProperty("Accept",       this.accept.toString())
 
       req.setRequestMethod("POST")
       req.setDoOutput(true)
@@ -169,8 +180,8 @@ class OpenEhrRestClient {
       post.setRequestMethod("POST")
       post.setDoOutput(true)
 
-      post.setRequestProperty("Prefer", "return=representation")
-      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Prefer",        this.prefer.toString())
+      post.setRequestProperty("Accept",        this.accept.toString())
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
@@ -226,8 +237,8 @@ class OpenEhrRestClient {
       post.setRequestMethod("PUT")
       post.setDoOutput(true)
 
-      post.setRequestProperty("Prefer", "return=representation")
-      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Prefer",        this.prefer.toString())
+      post.setRequestProperty("Accept",        this.accept.toString())
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
@@ -288,9 +299,9 @@ class OpenEhrRestClient {
       post.setRequestMethod("POST")
       post.setDoOutput(true)
 
-      post.setRequestProperty("Content-Type", "application/json") // add to send a status
-      post.setRequestProperty("Prefer", "return=representation")
-      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Content-Type",  "application/json") // add to send a status
+      post.setRequestProperty("Prefer",        this.prefer.toString())
+      post.setRequestProperty("Accept",        this.accept.toString())
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
@@ -355,9 +366,9 @@ class OpenEhrRestClient {
       post.setRequestMethod("PUT")
       post.setDoOutput(true)
 
-      post.setRequestProperty("Content-Type", "application/json") // add to send a status
-      post.setRequestProperty("Prefer", "return=representation")
-      post.setRequestProperty("Accept", "application/json")
+      post.setRequestProperty("Content-Type",  "application/json") // add to send a status
+      post.setRequestProperty("Prefer",        this.prefer.toString())
+      post.setRequestProperty("Accept",        this.accept.toString())
       post.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       // required commiter header
@@ -412,8 +423,8 @@ class OpenEhrRestClient {
       get.setDoOutput(true)
 
       //get.setRequestProperty("Content-Type", "application/json") // add to send a status
-      //get.setRequestProperty("Prefer", "return=representation")
-      get.setRequestProperty("Accept", "application/json")
+      //get.setRequestProperty("Prefer",       this.prefer.toString())
+      get.setRequestProperty("Accept",        this.accept.toString())
       get.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       String response_body
@@ -464,8 +475,8 @@ class OpenEhrRestClient {
 
       // NOTE: JSON only requests for now
       req.setRequestProperty("Content-Type",  "application/json")
-      req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
 
@@ -534,7 +545,7 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: JSON only for now
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Accept",        this.accept.toString())
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       String response_body
@@ -596,8 +607,8 @@ class OpenEhrRestClient {
 
       // NOTE: JSON only requests for now
       req.setRequestProperty("Content-Type",  "application/json")
-      req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
       req.setRequestProperty("If-Match",      version_uid)
 
@@ -633,7 +644,7 @@ class OpenEhrRestClient {
 
       def status = req.getResponseCode()
 
-      println status
+      //println status
 
       // NOTE: the openEHR API responds 200 for updates
       // TODO: need to check for other 2xx codes and report a warning since it's not strictly compliant
@@ -658,7 +669,7 @@ class OpenEhrRestClient {
    // TODO: we need a way to serialize OperationalTemplate to XML in openEHR-OPT
    def uploadTemplate(String opt)
    {
-       if (performAuth && !this.token)
+      if (performAuth && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -669,10 +680,10 @@ class OpenEhrRestClient {
       req.setRequestMethod("POST")
       req.setDoOutput(true)
 
-      // NOTE: JSON only requests for now
-      req.setRequestProperty("Content-Type",  "application/json")
-      //req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      // NOTE: the upload template request will always be XML until we have a JSON schema for OPT
+      req.setRequestProperty("Content-Type",  "application/xml")
+      //req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
 
@@ -702,6 +713,7 @@ class OpenEhrRestClient {
 
       def status = req.getResponseCode()
 
+      // TODO: make configurable if it accepts a 409 Conflict as successful for this service
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(201))
       {
@@ -717,7 +729,7 @@ class OpenEhrRestClient {
       this.lastError = json_parser.parseText(response_body)
 
 
-      return null // no compo is returned if there is an error
+      return null // no object is returned if there is an error
    }
 
 
@@ -736,8 +748,8 @@ class OpenEhrRestClient {
 
       // NOTE: JSON only requests for now
       req.setRequestProperty("Content-Type",  "application/json")
-      req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
 
@@ -811,8 +823,8 @@ class OpenEhrRestClient {
 
       // NOTE: JSON only requests for now
       req.setRequestProperty("Content-Type",  "application/json")
-      req.setRequestProperty("Prefer",        "return=representation")
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
 
@@ -911,7 +923,7 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: JSON only for now
-      req.setRequestProperty("Accept",        "application/json")
+      req.setRequestProperty("Accept",        this.accept.toString())
       req.setRequestProperty("Authorization", "Bearer "+ this.token)
 
       String response_body

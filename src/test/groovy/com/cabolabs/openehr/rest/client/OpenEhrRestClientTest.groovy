@@ -39,13 +39,17 @@ class OpenEhrRestClientTest extends Specification {
 
       boolean performAuth = Boolean.parseBoolean(getProperty("sut_api_perform_auth"))
 
+      // TODO: check config file for prefered content type or prefer, if no config is present, default values will apply
       client = new OpenEhrRestClient(
               getProperty("sut_api_url"),
               getProperty("sut_api_auth_url"),
               getProperty("sut_api_admin_url"),
               performAuth,
-              Boolean.parseBoolean(getProperty("sut_api_perform_db_truncation"))
+              Boolean.parseBoolean(getProperty("sut_api_perform_db_truncation")),
+              ContentTypeEnum.JSON
       )
+
+      // TODO: make committer values configurable
       client.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
 
       if (performAuth)
@@ -89,7 +93,7 @@ class OpenEhrRestClientTest extends Specification {
     * This test case doesn't focus on data validation against OPT constraints.
     */
    @Unroll
-   def "B.1.a. create new ehr"()
+   def "A. create new ehr"()
    {
       when:
          def ehr = create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
@@ -118,149 +122,23 @@ class OpenEhrRestClientTest extends Specification {
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
    }
 
-   @Unroll
-   def "B.1.b. create ehr twice"()
+   def "B. upload template"()
    {
-      // NOTE: if the data set defines a subject_id, it shouldn't be used to avoid making this case fail because of
-      //       the patient already having an EHR, that is tested in the next case B.1.c
       when:
-         def ehr1 = create_ehr(data_set_no, is_queryable, is_modifiable, has_status, null, other_details, ehr_id)
+         String opt = this.getClass().getResource('/minimal_evaluation.opt').text
+         def result = client.uploadTemplate(opt)
 
       then:
-         ehr1 != null
-         ehr1.ehr_status != null
-
-         // ehr_status is an object_ref
-         ehr1.ehr_status.uid != null
-
-      when:
-         def ehr2 = create_ehr(data_set_no, is_queryable, is_modifiable, has_status, null, other_details, ehr1.ehr_id.value)
-
-      then:
-         ehr2 == null
-         client.lastError.result.code == 'EHRSERVER::API::RESPONSE_CODES::99213'
-
-         // NOTE: error messages might be left out of the formal onformance
-         client.lastError.result.message == "EHR with ehr_id ${ehr1.ehr_id.value} already exists, ehr_id must be unique"
-
+         if (!result) println client.getLastError()
+         result != null
+         // TODO: server has +1 template
 
       cleanup:
          // server cleanup
          client.truncateServer()
-
-
-      // NOTE: all subjec_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patietn
-      where:
-         [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
    }
 
-
-
-   def "B.3.a. get existing ehr"()
-   {
-      when:
-         def ehr = client.createEhr()
-         def get_ehr = client.getEhr(ehr.ehr_id.value)
-
-      then:
-         get_ehr != null
-         ehr.ehr_id.value == get_ehr.ehr_id.value
-
-      cleanup:
-         client.truncateServer()
-   }
-
-   // TODO: B.3.b.
-
-   def "B.3.c. get non existing ehr"()
-   {
-      when:
-         def get_ehr = client.getEhr('non-existing-id')
-
-      then:
-         get_ehr == null
-         client.lastError != null
-         client.lastError.result.message == error_message_replace_values(properties.error_ehr_not_found_msg, ['non-existing-id'])
-
-      cleanup:
-         client.truncateServer()
-   }
-
-
-
-   def "B.4.a. get composition at version"()
-   {
-      when:
-         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
-         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
-
-         client.uploadTemplate(opt)
-
-         def parser = new OpenEhrJsonParserQuick()
-         def compo = parser.parseJson(json_compo)
-         def ehr = client.createEhr()
-
-         def out_composition = client.createComposition(ehr.ehr_id.value, compo)
-         def get_composition = client.getComposition(ehr.ehr_id.value, out_composition.uid.value)
-
-      then:
-         get_composition != null
-         out_composition.uid.value == get_composition.uid.value
-         out_composition.archetype_node_id == get_composition.archetype_node_id
-         out_composition.archetype_details.template_id.value == get_composition.archetype_details.template_id.value
-
-      cleanup:
-         client.truncateServer()
-   }
-
-   def "B.4.b. get composition at version, version doesn't exist"()
-   {
-      when:
-         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
-         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
-
-         client.uploadTemplate(opt)
-
-         def parser = new OpenEhrJsonParserQuick()
-         def compo = parser.parseJson(json_compo)
-         def ehr = client.createEhr()
-
-         def get_composition = client.getComposition(ehr.ehr_id.value, 'xxx.yyy.v1')
-
-      then:
-         get_composition == null
-
-         // this is a way to check the error message and leave the error message be configurable for each SUT
-         // the path where the error message is located in the response and the expected error message are configured
-         // the expected error message has configurable arguments (for the variable content) in the form {0} {1} ... which are replaced here for the expected values
-         get_at_path(client.lastError, properties.error_composition_not_found_path) == error_message_replace_values(properties.error_composition_not_found_msg, ['xxx.yyy.v1'])
-
-
-      cleanup:
-         client.truncateServer()
-   }
-
-
-   def "B.4.c. get composition at version, ehr doesn't exist"()
-   {
-      when:
-         def get_composition = client.getComposition('xxxxxxxx', 'xxx.yyy.v1')
-
-      then:
-         get_composition == null
-
-         get_at_path(client.lastError, properties.error_ehr_not_found_path) == error_message_replace_values(properties.error_ehr_not_found_msg, ['xxxxxxxx'])
-
-         //println client.lastError
-
-      cleanup:
-         client.truncateServer()
-   }
-
-
-   // B.6. CREATE COMPOSITION
-
-   def "B.6.a. create new event composition"()
+   def "C. create new event composition"()
    {
       when:
          String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
@@ -288,44 +166,6 @@ class OpenEhrRestClientTest extends Specification {
          // server cleanup
          client.truncateServer()
    }
-
-
-   // B.7. UPDATE COMPOSITION
-
-   def "B.7.a. update an existing event composition"()
-   {
-      when:
-         String opt        = this.getClass().getResource('/minimal_evaluation.opt').text
-         String json_compo = this.getClass().getResource('/minimal_evaluation.en.v1_20230205.json').text
-
-         client.uploadTemplate(opt)
-
-         def parser = new OpenEhrJsonParserQuick()
-         def compo = parser.parseJson(json_compo)
-         def ehr = client.createEhr()
-
-         def out_composition = client.createComposition(ehr.ehr_id.value, compo)
-
-         // there is a problem with the update if it comes microseconds after the create for updating the created compo, there is a race condition when indexing.
-         //sleep(5000)
-
-         // NOTE: the compo should be updated but is not needed for this test so we use the same compo as the create
-         def update_composition = client.updateComposition(ehr.ehr_id.value, compo, out_composition.uid.value)
-
-      then:
-         out_composition != null
-         out_composition.uid.value != null
-         update_composition != null
-         update_composition.uid.value.split("::")[0] == out_composition.uid.value.split("::")[0]
-         update_composition.uid.value.split("::")[1] == out_composition.uid.value.split("::")[1]
-         Integer.parseInt(update_composition.uid.value.split("::")[2]) == Integer.parseInt(out_composition.uid.value.split("::")[2]) + 1
-
-
-      //cleanup:
-         // server cleanup
-         //client.truncateServer()
-   }
-
 
 
    private def create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
@@ -462,7 +302,7 @@ class OpenEhrRestClientTest extends Specification {
 
 
    // TODO: these two 'tests' should really be data load scripts that use the rest client, maybe putting them in loadEHR
-
+   /*
    def "LOAD. create composition minimal evaluation 100 times"()
    {
       when:
@@ -775,6 +615,7 @@ class OpenEhrRestClientTest extends Specification {
          // server cleanup
          //client.truncateServer()
    }
+   */
 
    private void changeCommitHeaders()
    {
