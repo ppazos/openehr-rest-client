@@ -28,13 +28,13 @@ class OpenEhrRestClient {
    String  baseUrl // = 'http://192.168.1.110:8080/ehrbase/rest/openehr/v1'
    String  baseAuthUrl
    String  baseAdminUrl
-   boolean performAuth
    boolean performDbTruncation
    String  token
 
    Map lastError = [:] // parsed JSON that contains an error response
    Map headers = [:] // extra headers to use in the POST endpoints like committer
 
+   AuthTypeEnum auth
    ContentTypeEnum accept
    PreferEnum      prefer
 
@@ -44,7 +44,7 @@ class OpenEhrRestClient {
       String baseUrl,
       String baseAuthUrl,
       String baseAdminUrl,
-      boolean performAuth,
+      AuthTypeEnum auth,
       boolean performDbTruncation,
       ContentTypeEnum accept = ContentTypeEnum.JSON,
       PreferEnum prefer      = PreferEnum.REPRESENTATION
@@ -52,7 +52,7 @@ class OpenEhrRestClient {
       this.baseUrl = baseUrl
       this.baseAuthUrl = baseAuthUrl
       this.baseAdminUrl = baseAdminUrl
-      this.performAuth = performAuth
+      this.auth   = auth
       this.performDbTruncation = performDbTruncation
       this.accept = accept
       this.prefer = prefer
@@ -94,8 +94,13 @@ class OpenEhrRestClient {
    // following link on how to run automated tests with OAuth:
    // https://www.baeldung.com/oauth-api-testing-with-spring-mvc
    //
-   String auth(String user, String pass)
+   boolean auth(String user, String pass)
    {
+      if (!user || !pass)
+      {
+         throw new Exception('Authentication: both user and pass are required')
+      }
+
       def req = new URL(this.baseAuthUrl +"/auth").openConnection()
       def body = '' // '{"message":"this is a message"}' // add to send a status
 
@@ -139,17 +144,19 @@ class OpenEhrRestClient {
          this.token = json.token
 
          //println this.token
+         return true
       }
       else
       {
          println req.getInputStream().getText() // FIXME: read error stream
+         return false
       }
    }
 
    // FIXME: this is not used
    private String do_create_ehr_request(EhrStatus ehr_status, String ehr_id)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -170,7 +177,7 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr()
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -227,7 +234,7 @@ class OpenEhrRestClient {
 
    EhrDto createEhr(String ehr_id)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -286,7 +293,7 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr(EhrStatus ehr_status)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -353,7 +360,7 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr(EhrStatus ehr_status, String ehr_id)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -412,7 +419,7 @@ class OpenEhrRestClient {
 
    EhrDto getEhr(String ehr_id)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -462,7 +469,7 @@ class OpenEhrRestClient {
 
    Composition createComposition(String ehr_id, Composition compo)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -533,7 +540,7 @@ class OpenEhrRestClient {
 
    Composition getComposition(String ehr_id, String version_uid)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -586,7 +593,7 @@ class OpenEhrRestClient {
     */
    Composition updateComposition(String ehr_id, Composition compo, String version_uid)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -669,7 +676,7 @@ class OpenEhrRestClient {
    // TODO: we need a way to serialize OperationalTemplate to XML in openEHR-OPT
    def uploadTemplate(String opt)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -735,7 +742,7 @@ class OpenEhrRestClient {
 
    ActorDto createActor(ActorDto actor)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -810,7 +817,7 @@ class OpenEhrRestClient {
 
    PartyRelationship createRelationship(PartyRelationship relationship)
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }
@@ -911,7 +918,7 @@ class OpenEhrRestClient {
 
    List listQueries()
    {
-      if (performAuth && !this.token)
+      if (this.auth != AuthTypeEnum.NONE && !this.token)
       {
          throw new Exception("Not authenticated")
       }

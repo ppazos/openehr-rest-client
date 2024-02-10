@@ -37,27 +37,45 @@ class OpenEhrRestClientTest extends Specification {
          properties.load(it)
       }
 
-      boolean performAuth = Boolean.parseBoolean(getProperty("sut_api_perform_auth"))
-
       // TODO: check config file for prefered content type or prefer, if no config is present, default values will apply
       client = new OpenEhrRestClient(
-              getProperty("sut_api_url"),
-              getProperty("sut_api_auth_url"),
-              getProperty("sut_api_admin_url"),
-              performAuth,
-              Boolean.parseBoolean(getProperty("sut_api_perform_db_truncation")),
-              ContentTypeEnum.JSON
+         getProperty("sut_api_url"),
+         getProperty("sut_api_auth_url"),
+         getProperty("sut_api_admin_url"),
+         AuthTypeEnum.fromString(getProperty("sut_api_auth")),
+         Boolean.parseBoolean(getProperty("sut_api_perform_db_truncation")),
+         ContentTypeEnum.JSON
       )
 
       // TODO: make committer values configurable
       client.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
 
-      if (performAuth)
+      // handle different auth options if auth is not NONE
+      switch (client.getAuth())
       {
-         // set required header for POST endpoints
-         client.auth("admin@cabolabs.com", "admin") // TODO: set on config file
-         // TODO: actually check the auth result is OK
+         case AuthTypeEnum.AUTH:
+            // set required header for POST endpoints
+            def user = getProperty("sut_api_username")
+            def pass = getProperty("sut_api_password")
+
+            if (!client.auth(user, pass))
+            {
+               throw new Exception("authentication failed, please check your credentials")
+            }
+         break
+         case AuthTypeEnum.TOKEN:
+
+            def accessToken = getProperty("sut_api_access_token")
+            if (!accessToken)
+            {
+               throw new Exception("sut_api_access_token is not set and it's required when sut_api_auth='token'")
+            }
+
+            client.setToken(accessToken)
+         break
       }
+
+
       // Instant now = Instant.now()
       // ZonedDateTime zdt = ZonedDateTime.ofInstant(now, ZoneOffset.UTC) //ZoneId.systemDefault()
       // System.out.println( "Date is: " + zdt )
