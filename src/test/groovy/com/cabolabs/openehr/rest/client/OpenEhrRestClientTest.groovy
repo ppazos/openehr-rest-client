@@ -39,7 +39,7 @@ class OpenEhrRestClientTest extends Specification {
       }
 
 
-      // Autehntication factory
+      // Authentication factory
       def authType = AuthTypeEnum.fromString(getProperty("api_auth"))
       def auth
       switch (authType)
