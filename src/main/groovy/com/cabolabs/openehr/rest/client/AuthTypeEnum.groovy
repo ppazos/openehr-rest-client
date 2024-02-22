@@ -2,9 +2,10 @@ package com.cabolabs.openehr.rest.client
 
 enum AuthTypeEnum {
 
-   AUTH('auth'),
-   TOKEN('token'),
-   NONE('none')
+   BASIC ('basic'),  // basic auth
+   TOKEN ('token'),  // bearer token
+   CUSTOM('custom'), // custome auth endpoint
+   NONE  ('none')
 
    String value
 

@@ -22,19 +22,22 @@ import java.nio.charset.StandardCharsets
 import net.pempek.unicode.UnicodeBOMInputStream
 import org.apache.log4j.*
 
+import com.cabolabs.openehr.rest.client.auth.Authentication
+
 @Log4j
 class OpenEhrRestClient {
 
+   Authentication auth
    String  baseUrl // = 'http://192.168.1.110:8080/ehrbase/rest/openehr/v1'
-   String  baseAuthUrl
-   String  baseAdminUrl
-   boolean performDbTruncation
-   String  token
+   //String  baseAuthUrl
+   //String  baseAdminUrl
+   //boolean performDbTruncation
+   //String  token
 
    Map lastError = [:] // parsed JSON that contains an error response
    Map headers = [:] // extra headers to use in the POST endpoints like committer
 
-   AuthTypeEnum auth
+   //AuthTypeEnum auth
    ContentTypeEnum accept
    PreferEnum      prefer
 
@@ -42,18 +45,18 @@ class OpenEhrRestClient {
 
    OpenEhrRestClient (
       String baseUrl,
-      String baseAuthUrl,
-      String baseAdminUrl,
-      AuthTypeEnum auth,
-      boolean performDbTruncation,
+      //String baseAuthUrl,
+      //String baseAdminUrl,
+      Authentication auth,
+      //boolean performDbTruncation,
       ContentTypeEnum accept = ContentTypeEnum.JSON,
       PreferEnum prefer      = PreferEnum.REPRESENTATION
    ) {
       this.baseUrl = baseUrl
-      this.baseAuthUrl = baseAuthUrl
-      this.baseAdminUrl = baseAdminUrl
+      //this.baseAuthUrl = baseAuthUrl
+      //this.baseAdminUrl = baseAdminUrl
       this.auth   = auth
-      this.performDbTruncation = performDbTruncation
+      //this.performDbTruncation = performDbTruncation
       this.accept = accept
       this.prefer = prefer
    }
@@ -94,6 +97,7 @@ class OpenEhrRestClient {
    // following link on how to run automated tests with OAuth:
    // https://www.baeldung.com/oauth-api-testing-with-spring-mvc
    //
+   /*
    boolean auth(String user, String pass)
    {
       if (!user || !pass)
@@ -152,24 +156,7 @@ class OpenEhrRestClient {
          return false
       }
    }
-
-   // FIXME: this is not used
-   private String do_create_ehr_request(EhrStatus ehr_status, String ehr_id)
-   {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
-      // prepare the POST or PUT uri
-
-      def uri = this.baseUrl +"/ehr"
-
-      if (ehr_id)
-      {
-         uri += "/"+ ehr_id
-      }
-   }
+   */
 
    /**
     * Creates a default EHR, no payload was provided and returns the full representation of the EHR created.
@@ -177,11 +164,6 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr()
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def post = new URL(this.baseUrl +"/ehr").openConnection()
 
       post.setRequestMethod("POST")
@@ -189,7 +171,9 @@ class OpenEhrRestClient {
 
       post.setRequestProperty("Prefer",        this.prefer.toString())
       post.setRequestProperty("Accept",        this.accept.toString())
-      post.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(post)
 
       // required commiter header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
@@ -234,11 +218,6 @@ class OpenEhrRestClient {
 
    EhrDto createEhr(String ehr_id)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def post = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
       post.setRequestMethod("PUT")
@@ -246,7 +225,9 @@ class OpenEhrRestClient {
 
       post.setRequestProperty("Prefer",        this.prefer.toString())
       post.setRequestProperty("Accept",        this.accept.toString())
-      post.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(post)
 
       // required commiter header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
@@ -293,11 +274,6 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr(EhrStatus ehr_status)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def post = new URL(this.baseUrl +"/ehr").openConnection()
 
       def serializer = new OpenEhrJsonSerializer()
@@ -309,7 +285,9 @@ class OpenEhrRestClient {
       post.setRequestProperty("Content-Type",  "application/json") // add to send a status
       post.setRequestProperty("Prefer",        this.prefer.toString())
       post.setRequestProperty("Accept",        this.accept.toString())
-      post.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(post)
 
       // required commiter header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
@@ -360,11 +338,6 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr(EhrStatus ehr_status, String ehr_id)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def post = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
       def serializer = new OpenEhrJsonSerializer()
@@ -376,7 +349,9 @@ class OpenEhrRestClient {
       post.setRequestProperty("Content-Type",  "application/json") // add to send a status
       post.setRequestProperty("Prefer",        this.prefer.toString())
       post.setRequestProperty("Accept",        this.accept.toString())
-      post.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(post)
 
       // required commiter header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
@@ -419,20 +394,14 @@ class OpenEhrRestClient {
 
    EhrDto getEhr(String ehr_id)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def get = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
       get.setRequestMethod("GET")
       get.setDoOutput(true)
-
-      //get.setRequestProperty("Content-Type", "application/json") // add to send a status
-      //get.setRequestProperty("Prefer",       this.prefer.toString())
       get.setRequestProperty("Accept",        this.accept.toString())
-      get.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(get)
 
       String response_body
 
@@ -469,13 +438,7 @@ class OpenEhrRestClient {
 
    Composition createComposition(String ehr_id, Composition compo)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def req = new URL("${this.baseUrl}/ehr/${ehr_id}/composition").openConnection()
-
 
       req.setRequestMethod("POST")
       req.setDoOutput(true)
@@ -484,7 +447,9 @@ class OpenEhrRestClient {
       req.setRequestProperty("Content-Type",  "application/json")
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
-      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
 
 
       // required commiter header
@@ -540,20 +505,14 @@ class OpenEhrRestClient {
 
    Composition getComposition(String ehr_id, String version_uid)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def req = new URL("${this.baseUrl}/ehr/${ehr_id}/composition/${version_uid}").openConnection()
-
 
       req.setRequestMethod("GET")
       req.setDoOutput(true)
-
-      // NOTE: JSON only for now
       req.setRequestProperty("Accept",        this.accept.toString())
-      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
 
       String response_body
 
@@ -593,12 +552,6 @@ class OpenEhrRestClient {
     */
    Composition updateComposition(String ehr_id, Composition compo, String version_uid)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
-
       def parts = version_uid.split('::')
       if (parts.size() < 3)
       {
@@ -608,7 +561,6 @@ class OpenEhrRestClient {
 
       def req = new URL("${this.baseUrl}/ehr/${ehr_id}/composition/${versioned_object_id}").openConnection()
 
-
       req.setRequestMethod("PUT")
       req.setDoOutput(true)
 
@@ -616,8 +568,10 @@ class OpenEhrRestClient {
       req.setRequestProperty("Content-Type",  "application/json")
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
-      req.setRequestProperty("Authorization", "Bearer "+ this.token)
       req.setRequestProperty("If-Match",      version_uid)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
 
 
       // required commiter header
@@ -676,65 +630,49 @@ class OpenEhrRestClient {
    // TODO: we need a way to serialize OperationalTemplate to XML in openEHR-OPT
    def uploadTemplate(String opt)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def req = new URL("${this.baseUrl}/definition/template/adl1.4").openConnection()
-
 
       req.setRequestMethod("POST")
       req.setDoOutput(true)
 
       // NOTE: the upload template request will always be XML until we have a JSON schema for OPT
       req.setRequestProperty("Content-Type",  "application/xml")
-      //req.setRequestProperty("Prefer",        this.prefer.toString())
-      req.setRequestProperty("Accept",        this.accept.toString())
-      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+      req.setRequestProperty("Accept",        "application/xml") //this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
 
 
       // TODO: Need some AUDIT for uploading OPTs..
 
-
-      // NOTE: JSON only requests for now
-      //def serializer = new OpenEhrJsonSerializer()
-      //def body = serializer.serialize(compo)
-
+      // NOTE: getOutputStream() actually sends the request
+      // https://github.com/frohoff/jdk8u-dev-jdk/blob/master/src/share/classes/sun/net/www/protocol/http/HttpURLConnection.java#L1281-L1292
       req.getOutputStream().write(opt.getBytes("UTF-8"));
-
-
-      String response_body
-
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = req.getInputStream().getText()
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = req.getErrorStream().getText()
-      }
 
 
       def status = req.getResponseCode()
 
       // TODO: make configurable if it accepts a 409 Conflict as successful for this service
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (status.equals(201))
+      if (status.equals(201)) // Created
       {
-         //def parser = new OpenEhrJsonParserQuick()
-         //def compo_out = parser.parseComposition(response_body)
-         return response_body
+         return req.getInputStream()?.getText()
       }
-
-
-      // Expects a JSON error
-      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
-
+      else if (status.equals(204)) // No Content
+      {
+         return opt // returns the same opt as the input
+      }
+      else if (status.equals(409)) // Conflict
+      {
+         // NOTE: this is more a warning than an error
+         this.lastError = [error: "Conflict: template already exists"]
+      }
+      else
+      {
+         // NOTE: we could parse the error but different CDRs might return whatever they want,
+         //       though we could check try parsing JSON then XML then treat it as string.
+         this.lastError = [error: req.getErrorStream()?.getText()]
+      }
 
       return null // no object is returned if there is an error
    }
@@ -742,13 +680,7 @@ class OpenEhrRestClient {
 
    ActorDto createActor(ActorDto actor)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def req = new URL("${this.baseUrl}/demographic/actor").openConnection()
-
 
       req.setRequestMethod("POST")
       req.setDoOutput(true)
@@ -757,7 +689,9 @@ class OpenEhrRestClient {
       req.setRequestProperty("Content-Type",  "application/json")
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
-      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
 
 
       // required commiter header
@@ -817,13 +751,7 @@ class OpenEhrRestClient {
 
    PartyRelationship createRelationship(PartyRelationship relationship)
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def req = new URL("${this.baseUrl}/demographic/relationship").openConnection()
-
 
       req.setRequestMethod("POST")
       req.setDoOutput(true)
@@ -832,7 +760,9 @@ class OpenEhrRestClient {
       req.setRequestProperty("Content-Type",  "application/json")
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
-      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
 
 
       // required commiter header
@@ -842,7 +772,6 @@ class OpenEhrRestClient {
       }
 
       req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
-
 
 
       // NOTE: JSON only requests for now
@@ -909,7 +838,7 @@ class OpenEhrRestClient {
    */
 
 
-   // QUERY
+   // QUERY (tests)
 
    def storeQuery(String qualified_name, String version, String type, String query)
    {
@@ -918,20 +847,16 @@ class OpenEhrRestClient {
 
    List listQueries()
    {
-      if (this.auth != AuthTypeEnum.NONE && !this.token)
-      {
-         throw new Exception("Not authenticated")
-      }
-
       def req = new URL("${this.baseUrl}/definition/query").openConnection()
-
 
       req.setRequestMethod("GET")
       req.setDoOutput(true)
 
       // NOTE: JSON only for now
       req.setRequestProperty("Accept",        this.accept.toString())
-      req.setRequestProperty("Authorization", "Bearer "+ this.token)
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
 
       String response_body
 
@@ -978,6 +903,7 @@ class OpenEhrRestClient {
       return br.text // http://docs.groovy-lang.org/latest/html/groovy-jdk/java/io/BufferedReader.html#getText()
    }
 
+   /* FIXME: trucation should be an extension of the REST Client
    def truncateServer()
    {
       if (performDbTruncation) {
@@ -987,4 +913,5 @@ class OpenEhrRestClient {
          //req.getInputStream().getText()
       }
    }
+   */
 }

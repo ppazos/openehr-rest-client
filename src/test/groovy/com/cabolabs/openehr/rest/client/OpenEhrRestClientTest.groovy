@@ -15,6 +15,7 @@ import com.cabolabs.openehr.rm_1_0_2.common.archetyped.*
 import com.cabolabs.openehr.rm_1_0_2.common.generic.PartySelf
 
 import com.cabolabs.openehr.formats.OpenEhrJsonParserQuick
+import com.cabolabs.openehr.rest.client.auth.*
 
 import groovy.json.JsonSlurper
 
@@ -37,44 +38,78 @@ class OpenEhrRestClientTest extends Specification {
          properties.load(it)
       }
 
+
+      // Autehntication factory
+      def authType = AuthTypeEnum.fromString(getProperty("api_auth"))
+      def auth
+      switch (authType)
+      {
+         case AuthTypeEnum.BASIC:
+
+            def user = getProperty("api_username")
+            def pass = getProperty("api_password")
+
+            if (!user)
+            {
+               throw new Exception("api_username is not set and it's required when api_auth='basic'")
+            }
+
+            if (!pass)
+            {
+               throw new Exception("api_password is not set and it's required when api_auth='basic'")
+            }
+
+            auth = new BasicAuth(user, pass)
+         break
+         case AuthTypeEnum.TOKEN:
+
+            def token = getProperty("api_access_token")
+            if (!token)
+            {
+               throw new Exception("api_access_token is not set and it's required when api_auth='token'")
+            }
+
+            auth = new TokenAuth(token)
+         break
+         case AuthTypeEnum.CUSTOM:
+            def aapi = getProperty("api_auth_url")
+            def user = getProperty("api_username")
+            def pass = getProperty("api_password")
+
+            if (!aapi)
+            {
+               throw new Exception("api_auth_url is not set and it's required when api_auth='custom'")
+            }
+
+            if (!user)
+            {
+               throw new Exception("api_username is not set and it's required when api_auth='custom'")
+            }
+
+            if (!pass)
+            {
+               throw new Exception("api_password is not set and it's required when api_auth='custom'")
+            }
+
+            auth = new CustomAuth(aapi, user, pass)
+         break
+         case AuthTypeEnum.NONE:
+            auth = new NoAuth()
+         break
+      }
+
       // TODO: check config file for prefered content type or prefer, if no config is present, default values will apply
       client = new OpenEhrRestClient(
-         getProperty("sut_api_url"),
-         getProperty("sut_api_auth_url"),
-         getProperty("sut_api_admin_url"),
-         AuthTypeEnum.fromString(getProperty("sut_api_auth")),
-         Boolean.parseBoolean(getProperty("sut_api_perform_db_truncation")),
+         getProperty("base_url"),
+         //getProperty("sut_api_auth_url"),
+         //getProperty("sut_api_admin_url"),
+         auth,
+         //Boolean.parseBoolean(getProperty("sut_api_perform_db_truncation")),
          ContentTypeEnum.JSON
       )
 
       // TODO: make committer values configurable
       client.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
-
-      // handle different auth options if auth is not NONE
-      switch (client.getAuth())
-      {
-         case AuthTypeEnum.AUTH:
-            // set required header for POST endpoints
-            def user = getProperty("sut_api_username")
-            def pass = getProperty("sut_api_password")
-
-            if (!client.auth(user, pass))
-            {
-               throw new Exception("authentication failed, please check your credentials")
-            }
-         break
-         case AuthTypeEnum.TOKEN:
-
-            def accessToken = getProperty("sut_api_access_token")
-            if (!accessToken)
-            {
-               throw new Exception("sut_api_access_token is not set and it's required when sut_api_auth='token'")
-            }
-
-            client.setToken(accessToken)
-         break
-      }
-
 
       // Instant now = Instant.now()
       // ZonedDateTime zdt = ZonedDateTime.ofInstant(now, ZoneOffset.UTC) //ZoneId.systemDefault()
@@ -130,9 +165,9 @@ class OpenEhrRestClientTest extends Specification {
             ehr.ehr_status.subject.external_ref.id.value == subject_id
          }
 
-      cleanup:
-         // server cleanup
-         client.truncateServer()
+      // cleanup:
+      //    // server cleanup
+      //    client.truncateServer()
 
 
       // NOTE: all subject_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patient
@@ -147,13 +182,23 @@ class OpenEhrRestClientTest extends Specification {
          def result = client.uploadTemplate(opt)
 
       then:
-         if (!result) println client.getLastError()
-         result != null
-         // TODO: server has +1 template
+         if (!result)
+         {
+            if (client.lastError.error == 'Conflict: template already exists')
+            {
+               // This one is accepted, means the template already exists on the server
+            }
+            else
+            {
+               // This should be a real error
+               println client.getLastError()
+               assert false // make it fail on purpose
+            }
+         }
 
-      cleanup:
-         // server cleanup
-         client.truncateServer()
+      // cleanup:
+      //    // server cleanup
+      //    client.truncateServer()
    }
 
    def "C. create new event composition"()
@@ -180,9 +225,9 @@ class OpenEhrRestClientTest extends Specification {
          get_composition.uid.value == out_composition.uid.value
 
 
-      cleanup:
-         // server cleanup
-         client.truncateServer()
+      // cleanup:
+      //    // server cleanup
+      //    client.truncateServer()
    }
 
 
