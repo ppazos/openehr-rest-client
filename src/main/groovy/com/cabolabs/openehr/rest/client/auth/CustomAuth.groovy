@@ -38,7 +38,7 @@ class CustomAuth extends Authentication {
       req.setRequestMethod("POST")
       req.setDoOutput(true)
 
-      String body = "username=${this.username}&password=${this.password}"
+      String body = "email=${this.username}&password=${this.password}"
       req.getOutputStream().write(body.getBytes("UTF-8"));
       //req.setRequestProperty("Content-Length", Integer.toString(body_bytes.length))
 
