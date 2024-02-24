@@ -156,6 +156,7 @@ class OpenEhrRestClientTest extends Specification {
 
          ehr != null
          ehr.ehr_status != null
+         client.lastResponseCode == 201
 
          // ehr_status is an object_ref
          ehr.ehr_status.uid != null

@@ -37,6 +37,9 @@ class OpenEhrRestClient {
    Map lastError = [:] // parsed JSON that contains an error response
    Map headers = [:] // extra headers to use in the POST endpoints like committer
 
+   int lastResponseCode
+
+
    //AuthTypeEnum auth
    ContentTypeEnum accept
    PreferEnum      prefer
@@ -45,20 +48,19 @@ class OpenEhrRestClient {
 
    OpenEhrRestClient (
       String baseUrl,
-      //String baseAuthUrl,
-      //String baseAdminUrl,
       Authentication auth,
-      //boolean performDbTruncation,
       ContentTypeEnum accept = ContentTypeEnum.JSON,
       PreferEnum prefer      = PreferEnum.REPRESENTATION
    ) {
       this.baseUrl = baseUrl
-      //this.baseAuthUrl = baseAuthUrl
-      //this.baseAdminUrl = baseAdminUrl
       this.auth   = auth
-      //this.performDbTruncation = performDbTruncation
       this.accept = accept
       this.prefer = prefer
+   }
+
+   int getLastResponseCode()
+   {
+      this.lastResponseCode
    }
 
    // value example: 'name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"'
@@ -199,6 +201,7 @@ class OpenEhrRestClient {
       }
 
       def status = post.getResponseCode()
+      this.lastResponseCode = status
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(201))
@@ -252,6 +255,7 @@ class OpenEhrRestClient {
       }
 
       def status = post.getResponseCode()
+      this.lastResponseCode = status
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(201))
@@ -316,6 +320,7 @@ class OpenEhrRestClient {
       }
 
       def status = post.getResponseCode()
+      this.lastResponseCode = status
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(201))
@@ -365,6 +370,7 @@ class OpenEhrRestClient {
 
       post.getOutputStream().write(body.getBytes("UTF-8"));
       def status = post.getResponseCode()
+      this.lastResponseCode = status
 
       String response_body
       try
@@ -417,6 +423,7 @@ class OpenEhrRestClient {
       }
 
       def status = get.getResponseCode()
+      this.lastResponseCode = status
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(200))
@@ -484,6 +491,7 @@ class OpenEhrRestClient {
 
 
       def status = req.getResponseCode()
+      this.lastResponseCode = status
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(201))
@@ -529,6 +537,7 @@ class OpenEhrRestClient {
 
 
       def status = req.getResponseCode()
+      this.lastResponseCode = status
 
       if (status.equals(200))
       {
@@ -604,6 +613,7 @@ class OpenEhrRestClient {
       }
 
       def status = req.getResponseCode()
+      this.lastResponseCode = status
 
       //println status
 
@@ -651,6 +661,7 @@ class OpenEhrRestClient {
 
 
       def status = req.getResponseCode()
+      this.lastResponseCode = status
 
       // TODO: make configurable if it accepts a 409 Conflict as successful for this service
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
@@ -728,6 +739,7 @@ class OpenEhrRestClient {
 
 
       def status = req.getResponseCode()
+      this.lastResponseCode = status
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(201))
@@ -796,6 +808,7 @@ class OpenEhrRestClient {
 
 
       def status = req.getResponseCode()
+      this.lastResponseCode = status
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(201))
@@ -873,6 +886,7 @@ class OpenEhrRestClient {
 
 
       def status = req.getResponseCode()
+      this.lastResponseCode = status
 
       if (status.equals(200))
       {
