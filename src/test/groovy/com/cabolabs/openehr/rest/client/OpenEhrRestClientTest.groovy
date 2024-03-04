@@ -176,6 +176,41 @@ class OpenEhrRestClientTest extends Specification {
          [data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id] << valid_cases()
    }
 
+   def "A.1. create ehr no host"()
+   {
+      when:
+         def myclient = new OpenEhrRestClient(
+            'http://wrongurl6699.com',
+            new NoAuth(),
+            ContentTypeEnum.JSON
+         )
+
+         myclient.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
+         def ehr = myclient.createEhr()
+
+      then:
+         println myclient.lastError
+         //thrown(java.net.UnknownHostException)
+   }
+
+   def "A.2. create ehr no connection"()
+   {
+      when:
+         def myclient = new OpenEhrRestClient(
+            'http://localhost:9999/wrong/url',
+            new NoAuth(),
+            ContentTypeEnum.JSON
+         )
+
+         myclient.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
+         def ehr = myclient.createEhr()
+
+      then:
+         thrown(java.net.ConnectException)
+   }
+
    def "B. upload template"()
    {
       when:
@@ -200,6 +235,42 @@ class OpenEhrRestClientTest extends Specification {
       // cleanup:
       //    // server cleanup
       //    client.truncateServer()
+   }
+
+   def "B.1. upload template no host"()
+   {
+      when:
+         def myclient = new OpenEhrRestClient(
+            'http://wrongurl6699.com',
+            new NoAuth(),
+            ContentTypeEnum.JSON
+         )
+
+         myclient.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
+         String opt = this.getClass().getResource('/minimal_evaluation.opt').text
+         myclient.uploadTemplate(opt)
+
+      then:
+         thrown(java.net.UnknownHostException)
+   }
+
+   def "B.2. upload template no connection"()
+   {
+      when:
+         def myclient = new OpenEhrRestClient(
+            'http://localhost:9999/wrong/url',
+            new NoAuth(),
+            ContentTypeEnum.JSON
+         )
+
+         myclient.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
+         String opt = this.getClass().getResource('/minimal_evaluation.opt').text
+         myclient.uploadTemplate(opt)
+
+      then:
+         thrown(java.net.ConnectException)
    }
 
    def "C. create new event composition"()

@@ -188,20 +188,43 @@ class OpenEhrRestClient {
 
 
       String response_body
+      def status
 
       try
       {
+         post.connect()
+
+         status = post.getResponseCode()
+
+         this.lastResponseCode = status
+
          // this throws an exception if the response status code is not 2xx
          response_body = post.getInputStream().getText()
+      }
+      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, host is valid"
+         }'''
+      }
+      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, check the server is up"
+         }'''
       }
       catch (Exception e)
       {
          // for 4xx errors, the server will return a JSON payload error
-         response_body = post.getErrorStream().getText()
+         response_body = post.getErrorStream()?.getText()
+
+         this.lastResponseCode = status
       }
 
-      def status = post.getResponseCode()
-      this.lastResponseCode = status
+
+      println response_body
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (status.equals(201))
@@ -247,6 +270,20 @@ class OpenEhrRestClient {
       {
          // this throws an exception if the response status code is not 2xx
          response_body = post.getInputStream().getText()
+      }
+      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, host is valid"
+         }'''
+      }
+      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, check the server is up"
+         }'''
       }
       catch (Exception e)
       {
@@ -313,6 +350,20 @@ class OpenEhrRestClient {
          // this throws an exception if the response status code is not 2xx
          response_body = post.getInputStream().getText()
       }
+      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, host is valid"
+         }'''
+      }
+      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, check the server is up"
+         }'''
+      }
       catch (Exception e)
       {
          // for 4xx errors, the server will return a JSON payload error
@@ -378,6 +429,20 @@ class OpenEhrRestClient {
          // this throws an exception if the response status code is not 2xx
          response_body = post.getInputStream().getText()
       }
+      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, host is valid"
+         }'''
+      }
+      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, check the server is up"
+         }'''
+      }
       catch (Exception e)
       {
          // for 4xx errors, the server will return a JSON payload error
@@ -415,6 +480,20 @@ class OpenEhrRestClient {
       {
          // this throws an exception if the response status code is not 2xx
          response_body = get.getInputStream().getText()
+      }
+      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, host is valid"
+         }'''
+      }
+      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, check the server is up"
+         }'''
       }
       catch (Exception e)
       {
@@ -483,6 +562,20 @@ class OpenEhrRestClient {
          // this throws an exception if the response status code is not 2xx
          response_body = req.getInputStream().getText()
       }
+      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, host is valid"
+         }'''
+      }
+      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, check the server is up"
+         }'''
+      }
       catch (Exception e)
       {
          // for 4xx errors, the server will return a JSON payload error
@@ -528,6 +621,20 @@ class OpenEhrRestClient {
       {
          // this throws an exception if the response status code is not 2xx
          response_body = req.getInputStream().getText()
+      }
+      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, host is valid"
+         }'''
+      }
+      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, check the server is up"
+         }'''
       }
       catch (Exception e)
       {
@@ -605,6 +712,20 @@ class OpenEhrRestClient {
       {
          // this throws an exception if the response status code is not 2xx
          response_body = req.getInputStream().getText()
+      }
+      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, host is valid"
+         }'''
+      }
+      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
+      {
+         response_body = '''{
+            "status": "error",
+            "message": "Can\'t establish a connection, check the server is up"
+         }'''
       }
       catch (Exception e)
       {
