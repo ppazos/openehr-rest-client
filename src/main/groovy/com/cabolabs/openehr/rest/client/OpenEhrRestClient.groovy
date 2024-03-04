@@ -93,89 +93,22 @@ class OpenEhrRestClient {
       this.headers["openEHR-AUDIT_DETAILS.description"] = value
    }
 
-   // auth using the auth service of the same REST API, which returns a JWT access token
-   // if the API of the SUT doesn't provide an auth service, an open access API could be
-   // tested or a new method to implement OAuth authentication should be added, see the
-   // following link on how to run automated tests with OAuth:
-   // https://www.baeldung.com/oauth-api-testing-with-spring-mvc
-   //
-   /*
-   boolean auth(String user, String pass)
-   {
-      if (!user || !pass)
-      {
-         throw new Exception('Authentication: both user and pass are required')
-      }
-
-      def req = new URL(this.baseAuthUrl +"/auth").openConnection()
-      def body = '' // '{"message":"this is a message"}' // add to send a status
-
-      req.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-      //req.setRequestProperty("Content-Type", "application/json") // add to send a status
-      //req.setRequestProperty("Prefer",     this.prefer.toString())
-      req.setRequestProperty("Accept",       this.accept.toString())
-
-      req.setRequestMethod("POST")
-      req.setDoOutput(true)
-
-      String params = "email=${user}&password=${pass}&format=json"
-      byte[] reqData = params.getBytes(StandardCharsets.UTF_8)
-      req.setRequestProperty("Content-Length", Integer.toString(reqData.length))
-
-
-      try
-      {
-         DataOutputStream wr = new DataOutputStream(req.getOutputStream())
-         wr.write(reqData)
-      }
-      catch (java.net.ConnectException e)
-      {
-         // TODO: define our errors
-         throw new Exception("There was a problem connecting with the server")
-      }
-
-
-
-      //req.getOutputStream().write(body.getBytes("UTF-8"));
-      def status = req.getResponseCode()
-
-      if (status.equals(200))
-      {
-         def response_body = req.getInputStream().getText()
-
-         //println response_body
-
-         def json_parser = new JsonSlurper()
-         def json = json_parser.parseText(response_body)
-         this.token = json.token
-
-         //println this.token
-         return true
-      }
-      else
-      {
-         println req.getInputStream().getText() // FIXME: read error stream
-         return false
-      }
-   }
-   */
-
    /**
     * Creates a default EHR, no payload was provided and returns the full representation of the EHR created.
     * @return EHR created.
     */
    EhrDto createEhr()
    {
-      def post = new URL(this.baseUrl +"/ehr").openConnection()
+      def req = new URL(this.baseUrl +"/ehr").openConnection()
 
-      post.setRequestMethod("POST")
-      post.setDoOutput(true)
+      req.setRequestMethod("POST")
+      req.setDoOutput(true)
 
-      post.setRequestProperty("Prefer",        this.prefer.toString())
-      post.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
 
       // makes the authenticaiton magic over the current request
-      this.auth.apply(post)
+      this.auth.apply(req)
 
       // required commiter header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
@@ -183,51 +116,13 @@ class OpenEhrRestClient {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
       }
 
-      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
 
-
-
-      String response_body
-      def status
-
-      try
-      {
-         post.connect()
-
-         status = post.getResponseCode()
-
-         this.lastResponseCode = status
-
-         // this throws an exception if the response status code is not 2xx
-         response_body = post.getInputStream().getText()
-      }
-      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, host is valid"
-         }'''
-      }
-      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, check the server is up"
-         }'''
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = post.getErrorStream()?.getText()
-
-         this.lastResponseCode = status
-      }
-
-
-      println response_body
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (status.equals(201))
+      if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
          def ehr = parser.parseEhrDto(response_body)
@@ -244,16 +139,16 @@ class OpenEhrRestClient {
 
    EhrDto createEhr(String ehr_id)
    {
-      def post = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
+      def req = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
-      post.setRequestMethod("PUT")
-      post.setDoOutput(true)
+      req.setRequestMethod("PUT")
+      req.setDoOutput(true)
 
-      post.setRequestProperty("Prefer",        this.prefer.toString())
-      post.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
 
       // makes the authenticaiton magic over the current request
-      this.auth.apply(post)
+      this.auth.apply(req)
 
       // required commiter header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
@@ -261,41 +156,13 @@ class OpenEhrRestClient {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
       }
 
-      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
 
-
-      String response_body
-
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = post.getInputStream().getText()
-      }
-      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, host is valid"
-         }'''
-      }
-      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, check the server is up"
-         }'''
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = post.getErrorStream().getText()
-      }
-
-      def status = post.getResponseCode()
-      this.lastResponseCode = status
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (status.equals(201))
+      if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
          def ehr = parser.parseEhrDto(response_body)
@@ -315,20 +182,20 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr(EhrStatus ehr_status)
    {
-      def post = new URL(this.baseUrl +"/ehr").openConnection()
+      def req = new URL(this.baseUrl +"/ehr").openConnection()
 
       def serializer = new OpenEhrJsonSerializer()
       def body = serializer.serialize(ehr_status)
 
-      post.setRequestMethod("POST")
-      post.setDoOutput(true)
+      req.setRequestMethod("POST")
+      req.setDoOutput(true)
 
-      post.setRequestProperty("Content-Type",  "application/json") // add to send a status
-      post.setRequestProperty("Prefer",        this.prefer.toString())
-      post.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Content-Type",  "application/json") // add to send a status
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
 
       // makes the authenticaiton magic over the current request
-      this.auth.apply(post)
+      this.auth.apply(req)
 
       // required commiter header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
@@ -336,45 +203,16 @@ class OpenEhrRestClient {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
       }
 
-      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
+      req.getOutputStream().write(body.getBytes("UTF-8"))
 
 
-
-      post.getOutputStream().write(body.getBytes("UTF-8"));
-
-
-      String response_body
-
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = post.getInputStream().getText()
-      }
-      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, host is valid"
-         }'''
-      }
-      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, check the server is up"
-         }'''
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = post.getErrorStream().getText()
-      }
-
-      def status = post.getResponseCode()
-      this.lastResponseCode = status
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (status.equals(201))
+      if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
          def ehr = parser.parseEhrDto(response_body)
@@ -394,20 +232,20 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr(EhrStatus ehr_status, String ehr_id)
    {
-      def post = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
+      def req = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
       def serializer = new OpenEhrJsonSerializer()
       def body = serializer.serialize(ehr_status)
 
-      post.setRequestMethod("PUT")
-      post.setDoOutput(true)
+      req.setRequestMethod("PUT")
+      req.setDoOutput(true)
 
-      post.setRequestProperty("Content-Type",  "application/json") // add to send a status
-      post.setRequestProperty("Prefer",        this.prefer.toString())
-      post.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Content-Type",  "application/json") // add to send a status
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
 
       // makes the authenticaiton magic over the current request
-      this.auth.apply(post)
+      this.auth.apply(req)
 
       // required commiter header
       if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
@@ -415,44 +253,16 @@ class OpenEhrRestClient {
          throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
       }
 
-      post.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
 
+      req.getOutputStream().write(body.getBytes("UTF-8"))
 
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
-      post.getOutputStream().write(body.getBytes("UTF-8"));
-      def status = post.getResponseCode()
-      this.lastResponseCode = status
-
-      String response_body
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = post.getInputStream().getText()
-      }
-      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, host is valid"
-         }'''
-      }
-      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, check the server is up"
-         }'''
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = post.getErrorStream().getText()
-      }
-
-      if (status.equals(201))
+      if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
-         //println response_body
          def ehr = parser.parseEhrDto(response_body)
          return ehr
       }
@@ -474,38 +284,12 @@ class OpenEhrRestClient {
       // makes the authenticaiton magic over the current request
       this.auth.apply(get)
 
-      String response_body
 
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = get.getInputStream().getText()
-      }
-      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, host is valid"
-         }'''
-      }
-      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, check the server is up"
-         }'''
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = get.getErrorStream().getText()
-      }
-
-      def status = get.getResponseCode()
-      this.lastResponseCode = status
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (status.equals(200))
+      if (this.lastResponseCode.equals(200))
       {
          def parser = new OpenEhrJsonParserQuick()
          def ehr = parser.parseEhrDto(response_body)
@@ -547,47 +331,18 @@ class OpenEhrRestClient {
       req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
 
 
-
       // NOTE: JSON only requests for now
       def serializer = new OpenEhrJsonSerializer()
       def body = serializer.serialize(compo)
 
-      req.getOutputStream().write(body.getBytes("UTF-8"));
+      req.getOutputStream().write(body.getBytes("UTF-8"))
 
 
-      String response_body
-
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = req.getInputStream().getText()
-      }
-      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, host is valid"
-         }'''
-      }
-      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, check the server is up"
-         }'''
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = req.getErrorStream().getText()
-      }
-
-
-      def status = req.getResponseCode()
-      this.lastResponseCode = status
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (status.equals(201))
+      if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
          def compo_out = parser.parseJson(response_body)
@@ -615,38 +370,11 @@ class OpenEhrRestClient {
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
 
-      String response_body
 
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = req.getInputStream().getText()
-      }
-      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, host is valid"
-         }'''
-      }
-      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, check the server is up"
-         }'''
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = req.getErrorStream().getText()
-      }
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
-
-      def status = req.getResponseCode()
-      this.lastResponseCode = status
-
-      if (status.equals(200))
+      if (this.lastResponseCode.equals(200))
       {
          def parser = new OpenEhrJsonParserQuick()
          def compo_out = parser.parseJson(response_body)
@@ -703,44 +431,15 @@ class OpenEhrRestClient {
       def serializer = new OpenEhrJsonSerializer()
       def body = serializer.serialize(compo)
 
-      req.getOutputStream().write(body.getBytes("UTF-8"));
+      req.getOutputStream().write(body.getBytes("UTF-8"))
 
 
-      String response_body
-
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = req.getInputStream().getText()
-      }
-      catch (java.net.UnknownHostException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, host is valid"
-         }'''
-      }
-      catch (java.net.ConnectException e) // no error stream on this exception since there is no connection
-      {
-         response_body = '''{
-            "status": "error",
-            "message": "Can\'t establish a connection, check the server is up"
-         }'''
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = req.getErrorStream().getText()
-      }
-
-      def status = req.getResponseCode()
-      this.lastResponseCode = status
-
-      //println status
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
       // NOTE: the openEHR API responds 200 for updates
       // TODO: need to check for other 2xx codes and report a warning since it's not strictly compliant
-      if (status.equals(200))
+      if (this.lastResponseCode.equals(200))
       {
          def parser = new OpenEhrJsonParserQuick()
          def compo_out = parser.parseJson(response_body)
@@ -778,32 +477,34 @@ class OpenEhrRestClient {
 
       // NOTE: getOutputStream() actually sends the request
       // https://github.com/frohoff/jdk8u-dev-jdk/blob/master/src/share/classes/sun/net/www/protocol/http/HttpURLConnection.java#L1281-L1292
-      req.getOutputStream().write(opt.getBytes("UTF-8"));
+      req.getOutputStream().write(opt.getBytes("UTF-8"))
 
 
-      def status = req.getResponseCode()
-      this.lastResponseCode = status
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
       // TODO: make configurable if it accepts a 409 Conflict as successful for this service
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (status.equals(201)) // Created
+      if (this.lastResponseCode.equals(201)) // Created
       {
-         return req.getInputStream()?.getText()
+         return response_body
       }
-      else if (status.equals(204)) // No Content
+      else if (this.lastResponseCode.equals(204)) // No Content
       {
          return opt // returns the same opt as the input
       }
-      else if (status.equals(409)) // Conflict
+      else if (this.lastResponseCode.equals(409)) // Conflict
       {
          // NOTE: this is more a warning than an error
-         this.lastError = [error: "Conflict: template already exists"]
+         this.lastError = [status: 'error', message: "Conflict: template already exists"]
       }
       else
       {
          // NOTE: we could parse the error but different CDRs might return whatever they want,
          //       though we could check try parsing JSON then XML then treat it as string.
-         this.lastError = [error: req.getErrorStream()?.getText()]
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+         //this.lastError = [error: req.getErrorStream()?.getText()]
       }
 
       return null // no object is returned if there is an error
@@ -835,35 +536,20 @@ class OpenEhrRestClient {
       req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
 
 
-
       // NOTE: JSON only requests for now
       def serializer = new OpenEhrJsonSerializer()
 
       // FIXME: serialize DTO!
       def body = serializer.serialize(actor)
 
-      req.getOutputStream().write(body.getBytes("UTF-8"));
+      req.getOutputStream().write(body.getBytes("UTF-8"))
 
 
-      String response_body
-
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = req.getInputStream().getText()
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = req.getErrorStream().getText()
-      }
-
-
-      def status = req.getResponseCode()
-      this.lastResponseCode = status
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (status.equals(201))
+      if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
          parser.setSchemaFlavorAPI()
@@ -914,25 +600,11 @@ class OpenEhrRestClient {
       req.getOutputStream().write(body.getBytes("UTF-8"));
 
 
-      String response_body
-
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = req.getInputStream().getText()
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = req.getErrorStream().getText()
-      }
-
-
-      def status = req.getResponseCode()
-      this.lastResponseCode = status
+      // Response will always be a json string
+      String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (status.equals(201))
+      if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
          parser.setSchemaFlavorAPI()
@@ -992,24 +664,10 @@ class OpenEhrRestClient {
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
 
-      String response_body
 
-      try
-      {
-         // this throws an exception if the response status code is not 2xx
-         response_body = req.getInputStream().getText()
-      }
-      catch (Exception e)
-      {
-         // for 4xx errors, the server will return a JSON payload error
-         response_body = req.getErrorStream().getText()
-      }
+      String response_body = doRequest(req)
 
-
-      def status = req.getResponseCode()
-      this.lastResponseCode = status
-
-      if (status.equals(200))
+      if (this.lastResponseCode.equals(200))
       {
          // def parser = new OpenEhrJsonParserQuick()
          // def compo_out = parser.parseJson(response_body)
@@ -1036,6 +694,113 @@ class OpenEhrRestClient {
       bomInputStream.skipBOM() // NOP if no BOM is detected
       def br = new BufferedReader(new InputStreamReader(bomInputStream))
       return br.text // http://docs.groovy-lang.org/latest/html/groovy-jdk/java/io/BufferedReader.html#getText()
+   }
+
+
+   // connection https://github.com/openjdk/jdk11u/blob/master/src/java.base/share/classes/sun/net/www/protocol/http/HttpURLConnection.java
+   String doRequest(HttpURLConnection connection)
+   {
+      String response_body
+      def stream
+
+      try
+      {
+         connection.connect()
+
+         // NOTE: If we do getResponseCode() here and the response is 4xx or 5xx, then the code below won't
+         // throw an IOException! Though by looking at the OpenJDK code, it should always throw the exception
+         // https://github.com/openjdk/jdk11u/blob/master/src/java.base/share/classes/sun/net/www/protocol/http/HttpURLConnection.java#L1944
+
+         this.lastResponseCode = connection.getResponseCode()
+
+         // NOTE: internally getErrorStream() can return the input stream
+         // https://github.com/openjdk/jdk11u/blob/master/src/java.base/share/classes/sun/net/www/protocol/http/HttpURLConnection.java#L2019
+         stream = connection.getErrorStream() // 4xx, 5xx
+         if (stream)
+         {
+            response_body = stream.getText()
+         }
+         else
+         {
+            // this throws an exception if the response status code is not 2xx
+            response_body = connection.getInputStream().getText()
+         }
+      }
+      catch (java.net.UnknownHostException e)
+      {
+         // Checked here because the message of the exception is just the URL and we need
+         // a more explicit message.
+
+         response_body = """{
+            \"status\": \"error\",
+            \"message\": \"The host is unreachable: ${e.getMessage()}\"
+         }"""
+      }
+      // Parent exception for UnknownHostException, ConnectException and other network related exceptions
+      // also when the response code is 5xx it throws IOException.
+      // We shouldn't expect a response body when there is an exception, se we create one ourselves.
+      catch (java.io.IOException e)
+      {
+         //println "IOException "+ e.class
+         //e.printStackTrace()
+
+         response_body = """{
+            \"status\": \"error\",
+            \"message\": \"${e.getMessage()}\"
+         }"""
+      }
+      catch (Exception e)
+      {
+         //println "Exception ------------------"+ e.getClass()
+         //println e.getMessage()
+         //e.printStackTrace()
+
+         response_body = """{
+            \"status\": \"error\",
+            \"message\": \"${e.getMessage()}\"
+         }"""
+      }
+
+
+      /*
+      // Will have response code only if the connection was established
+      if (this.lastResponseCode)
+      {
+         // Check the response body only if the server returned contents
+         switch (this.lastResponseCode)
+         {
+            case 200..299:
+               println this.lastResponseCode
+            break
+            case 400..499:
+               println this.lastResponseCode
+            break
+            case 500..599:
+               println this.lastResponseCode
+               println response_body
+            break
+         }
+      }
+      */
+
+      // Check if response body is a json , if not, create the json string
+      if (response_body)
+      {
+         try
+         {
+            def json_parser = new JsonSlurper()
+            json_parser.parseText(response_body)
+         }
+         catch(Exception e) // IllegalArgumentException or groovy.json.JsonException
+         {
+            response_body = """{
+               \"status\": \"error\",
+               \"message\": \"${response_body}\"
+            }"""
+         }
+      }
+
+      return response_body
    }
 
    /* FIXME: trucation should be an extension of the REST Client

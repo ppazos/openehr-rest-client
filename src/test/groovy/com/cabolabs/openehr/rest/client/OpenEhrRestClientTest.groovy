@@ -190,7 +190,9 @@ class OpenEhrRestClientTest extends Specification {
          def ehr = myclient.createEhr()
 
       then:
-         println myclient.lastError
+         ehr == null
+         myclient.lastError.status == "error"
+         myclient.lastError.message == "The host is unreachable: wrongurl6699.com"
          //thrown(java.net.UnknownHostException)
    }
 
@@ -208,7 +210,32 @@ class OpenEhrRestClientTest extends Specification {
          def ehr = myclient.createEhr()
 
       then:
-         thrown(java.net.ConnectException)
+         ehr == null
+         myclient.lastError.status == "error"
+         myclient.lastError.message == "Connection refused (Connection refused)"
+         //thrown(java.net.ConnectException)
+   }
+
+   def "A.3. create ehr 500"()
+   {
+      when:
+         def myclient = new OpenEhrRestClient(
+            'http://httpstat.us/500',
+            new NoAuth(),
+            ContentTypeEnum.JSON
+         )
+
+         myclient.setCommitterHeader('name="John Doe", external_ref.id="BC8132EA-8F4A-11E7-BB31-BE2E44B06B34", external_ref.namespace="demographic", external_ref.type="PERSON"')
+
+         def ehr = myclient.createEhr()
+
+      then:
+         ehr == null
+
+         // NOTE: this is the error returned by the httpstat.us website when Accept: json is provided
+         myclient.lastError.code == 500
+         myclient.lastError.description == "Internal Server Error"
+         //thrown(java.net.ConnectException)
    }
 
    def "B. upload template"()
@@ -220,7 +247,8 @@ class OpenEhrRestClientTest extends Specification {
       then:
          if (!result)
          {
-            if (client.lastError.error == 'Conflict: template already exists')
+            client.lastError.status == 'error'
+            if (client.lastError.message == 'Conflict: template already exists')
             {
                // This one is accepted, means the template already exists on the server
             }
