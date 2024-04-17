@@ -335,6 +335,21 @@ class OpenEhrRestClientTest extends Specification {
          result.find{ it.templateId == 'encounter_with_coded_diagnosis'} != null
    }
 
+   def "B.b. get template by template id"()
+   {
+      when:
+         String opt = this.getClass().getResource('/encounter_with_coded_diagnosis.opt').text
+         client.uploadTemplate(opt)
+
+
+         def retrieved_opt = client.getTemplate('encounter_with_coded_diagnosis') // OperationalTemplate
+
+      then:
+         retrieved_opt != null
+
+         retrieved_opt.templateId == 'encounter_with_coded_diagnosis'
+   }
+
    def "C. create new event composition"()
    {
       when:

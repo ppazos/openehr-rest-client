@@ -94,6 +94,9 @@ class OpenEhrRestClient {
       this.headers["openEHR-AUDIT_DETAILS.description"] = value
    }
 
+
+   // EHR
+
    /**
     * Creates a default EHR, no payload was provided and returns the full representation of the EHR created.
     * @return EHR created.
@@ -305,6 +308,7 @@ class OpenEhrRestClient {
       return null // no ehr is returned if there is an error
    }
 
+
    // COMPOSITION
 
    Composition createComposition(String ehr_id, Composition compo)
@@ -456,6 +460,7 @@ class OpenEhrRestClient {
       return null // no compo is returned if there is an error
    }
 
+
    // TEMPLATE
 
    // TODO: we need a way to serialize OperationalTemplate to XML in openEHR-OPT
@@ -517,7 +522,7 @@ class OpenEhrRestClient {
 
       req.setRequestMethod("GET")
       req.setDoOutput(true)
-      req.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Accept", this.accept.toString())
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -567,6 +572,54 @@ class OpenEhrRestClient {
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
       def json_parser = new JsonSlurper()
       this.lastError = json_parser.parseText(response_body)
+
+      return null // no ehr is returned if there is an error
+   }
+
+   OperationalTemplate getTemplate(String templateId)
+   {
+      def req = new URL("${this.baseUrl}/definition/template/adl1.4/${templateId}").openConnection()
+
+      def old_accept = this.accept
+      this.accept = ContentTypeEnum.XML
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+      req.setRequestProperty("Accept", this.accept.toString()) // TODO: XML only for now
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+      // Response will be a jsono or xml string
+      String response_body = doRequest(req)
+
+      this.accept = old_accept
+
+      OperationalTemplate opt
+
+      if (this.lastResponseCode.equals(200))
+      {
+         // NOTE: we don't have parsers for Template Summary yet
+         // if (this.accept == ContentTypeEnum.JSON)
+         // {
+         //    //def slurper = new JsonSlurper()
+         //    //def list = slurper.parseText(response_body)
+
+         //    // TODO: parse JSON template
+         // }
+         // else
+         // {
+            def parser = new OperationalTemplateParser()
+            opt = parser.parse(response_body)
+         // }
+
+         return opt
+      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      //def json_parser = new JsonSlurper()
+      //this.lastError = json_parser.parseText(response_body)
 
       return null // no ehr is returned if there is an error
    }
