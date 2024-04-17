@@ -543,10 +543,10 @@ class OpenEhrRestClient {
             for (summary in list)
             {
                result << new OperationalTemplateSummary(
-                  templateId:        summary.template_id,
-                  concept:           summary.concept,
-                  archetypeId:       summary.archetype_id,
-                  created_timestamp: summary.created_timestamp // TODO: fix cammel case on attribute
+                  templateId:       summary.template_id,
+                  concept:          summary.concept,
+                  archetypeId:      summary.archetype_id,
+                  createdTimestamp: summary.created_timestamp // TODO: fix cammel case on attribute
                )
             }
          }
@@ -557,10 +557,10 @@ class OpenEhrRestClient {
             for (summary in list.map)
             {
                result << new OperationalTemplateSummary(
-                  templateId:        summary.entry.find{it.@key='template_id'}.text(),
-                  concept:           summary.entry.find{it.@key='concept'}.text(),
-                  archetypeId:       summary.entry.find{it.@key='archetype_id'}.text(),
-                  created_timestamp: summary.entry.find{it.@key='created_timestamp'}.text() // TODO: fix cammel case on attribute
+                  templateId:       summary.entry.find{it.@key='template_id'}.text(),
+                  concept:          summary.entry.find{it.@key='concept'}.text(),
+                  archetypeId:      summary.entry.find{it.@key='archetype_id'}.text(),
+                  createdTimestamp: summary.entry.find{it.@key='created_timestamp'}.text() // TODO: fix cammel case on attribute
                )
             }
          }
