@@ -326,7 +326,7 @@ class OpenEhrRestClientTest extends Specification {
          client.uploadTemplate(opt)
 
          // TODO: upload specific templates then chech those appear in the results
-         client.accept = ContentTypeEnum.XML // TEST
+         //client.accept = ContentTypeEnum.XML // TEST for XML accept
          def result = client.getTemplates() // List<OperationalTemplateSummary>
 
       then:
