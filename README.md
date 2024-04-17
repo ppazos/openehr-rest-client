@@ -1,5 +1,7 @@
 # openEHR REST Client
 
+![](assets/3.jpeg)
+
 This is the Groovy reference implementation of the [openEHR](https://www.openehr.org/) REST Client for connecting to openEHR REST API implementations.
 
 It compiles to Java bytecode so it can be used as any Java library with any language that compiles to the JVM.
