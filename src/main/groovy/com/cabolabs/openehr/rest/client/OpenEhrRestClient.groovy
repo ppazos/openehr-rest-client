@@ -14,6 +14,7 @@ import groovy.util.logging.*
 import com.cabolabs.openehr.formats.OpenEhrJsonParserQuick
 import com.cabolabs.openehr.formats.OpenEhrJsonSerializer
 import com.cabolabs.openehr.opt.model.OperationalTemplate
+import com.cabolabs.openehr.opt.model.OperationalTemplateSummary
 import com.cabolabs.openehr.opt.parser.OperationalTemplateParser
 import com.cabolabs.openehr.opt.instance_generator.JsonInstanceCanonicalGenerator2
 import java.util.Properties
@@ -275,14 +276,14 @@ class OpenEhrRestClient {
 
    EhrDto getEhr(String ehr_id)
    {
-      def get = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
+      def req = new URL(this.baseUrl +"/ehr/"+ ehr_id).openConnection()
 
-      get.setRequestMethod("GET")
-      get.setDoOutput(true)
-      get.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+      req.setRequestProperty("Accept",        this.accept.toString())
 
       // makes the authenticaiton magic over the current request
-      this.auth.apply(get)
+      this.auth.apply(req)
 
 
       // Response will always be a json string
@@ -508,6 +509,66 @@ class OpenEhrRestClient {
       }
 
       return null // no object is returned if there is an error
+   }
+
+   List<OperationalTemplateSummary> getTemplates()
+   {
+      def req = new URL("${this.baseUrl}/definition/template/adl1.4").openConnection()
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+      req.setRequestProperty("Accept",        this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+      // Response will be a jsono or xml string
+      String response_body = doRequest(req)
+
+      List result = []
+
+      if (this.lastResponseCode.equals(200))
+      {
+         // NOTE: we don't have parsers for Template Summary yet
+         if (this.accept == ContentTypeEnum.JSON)
+         {
+            def slurper = new JsonSlurper()
+            def list = slurper.parseText(response_body)
+
+            for (summary in list)
+            {
+               result << new OperationalTemplateSummary(
+                  templateId:        summary.template_id,
+                  concept:           summary.concept,
+                  archetypeId:       summary.archetype_id,
+                  created_timestamp: summary.created_timestamp // TODO: fix cammel case on attribute
+               )
+            }
+         }
+         else
+         {
+            def list = new XmlSlurper().parseText(response_body)
+
+            for (summary in list.map)
+            {
+               result << new OperationalTemplateSummary(
+                  templateId:        summary.entry.find{it.@key='template_id'}.text(),
+                  concept:           summary.entry.find{it.@key='concept'}.text(),
+                  archetypeId:       summary.entry.find{it.@key='archetype_id'}.text(),
+                  created_timestamp: summary.entry.find{it.@key='created_timestamp'}.text() // TODO: fix cammel case on attribute
+               )
+            }
+         }
+
+         return result
+      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+      return null // no ehr is returned if there is an error
    }
 
 
@@ -784,20 +845,25 @@ class OpenEhrRestClient {
       */
 
       // Check if response body is a json , if not, create the json string
+      // THIS IS AN EXTRA CHECK NOT REALLY NEEDED!
       if (response_body)
       {
-         try
+         if (this.accept == ContentTypeEnum.JSON)
          {
-            def json_parser = new JsonSlurper()
-            json_parser.parseText(response_body)
+            try
+            {
+               def json_parser = new JsonSlurper()
+               json_parser.parseText(response_body)
+            }
+            catch(Exception e) // IllegalArgumentException or groovy.json.JsonException
+            {
+               response_body = """{
+                  \"status\": \"error\",
+                  \"message\": \"${response_body}\"
+               }"""
+            }
          }
-         catch(Exception e) // IllegalArgumentException or groovy.json.JsonException
-         {
-            response_body = """{
-               \"status\": \"error\",
-               \"message\": \"${response_body}\"
-            }"""
-         }
+         // TODO: XML
       }
 
       return response_body

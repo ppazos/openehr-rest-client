@@ -238,6 +238,19 @@ class OpenEhrRestClientTest extends Specification {
          //thrown(java.net.ConnectException)
    }
 
+   def "A.a. get ehr"()
+   {
+      when:
+         def subject_id = randomUUID()
+         def ehr = this.create_ehr(null, true, true, false, subject_id, null, null)
+
+      then:
+         def retrievedEhr = client.getEhr(ehr.ehr_id.value)
+         retrievedEhr != null
+
+         retrievedEhr.ehr_id.value == ehr.ehr_id.value
+   }
+
    def "B. upload template"()
    {
       when:
@@ -299,6 +312,27 @@ class OpenEhrRestClientTest extends Specification {
 
       then:
          thrown(java.net.ConnectException)
+   }
+
+   def "B.a. get templates"()
+   {
+      when:
+         String opt
+
+         opt = this.getClass().getResource('/vital_signs_monitoring.opt').text
+         client.uploadTemplate(opt)
+
+         opt = this.getClass().getResource('/encounter_with_coded_diagnosis.opt').text
+         client.uploadTemplate(opt)
+
+         // TODO: upload specific templates then chech those appear in the results
+         client.accept = ContentTypeEnum.XML // TEST
+         def result = client.getTemplates() // List<OperationalTemplateSummary>
+
+      then:
+         result.find{ it.templateId == 'Vital signs monitoring'} != null
+
+         result.find{ it.templateId == 'encounter_with_coded_diagnosis'} != null
    }
 
    def "C. create new event composition"()
