@@ -432,8 +432,8 @@ class OpenEhrRestClientTest extends Specification {
                      value: new DvCodedText(
                         value: 'some value',
                         defining_code: new CodePhrase(
-                           code_string: '55501',
-                           terminology_id: new TerminologyId(
+                           codeString: '55501',
+                           terminologyId: new TerminologyId(
                               value: 'coolterm'
                            )
                         )

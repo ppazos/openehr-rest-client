@@ -21,11 +21,10 @@ import java.util.Properties
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import net.pempek.unicode.UnicodeBOMInputStream
-import org.apache.log4j.*
 
 import com.cabolabs.openehr.rest.client.auth.Authentication
 
-@Log4j
+@groovy.util.logging.Slf4j
 class OpenEhrRestClient {
 
    Authentication auth
