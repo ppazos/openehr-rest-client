@@ -28,19 +28,15 @@ import com.cabolabs.openehr.rest.client.auth.Authentication
 class OpenEhrRestClient {
 
    Authentication auth
+
    String  baseUrl // = 'http://192.168.1.110:8080/ehrbase/rest/openehr/v1'
-   //String  baseAuthUrl
-   //String  baseAdminUrl
-   //boolean performDbTruncation
-   //String  token
 
    Map lastError = [:] // parsed JSON that contains an error response
-   Map headers = [:] // extra headers to use in the POST endpoints like committer
+   Map headers = [:] // extra request headers to use in the POST endpoints like committer
 
+   Map lastResponseHeaders = [:]
    int lastResponseCode
 
-
-   //AuthTypeEnum auth
    ContentTypeEnum accept
    PreferEnum      prefer
 
@@ -127,9 +123,17 @@ class OpenEhrRestClient {
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201))
       {
-         def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         // For 201 with Prefer:return=minimal there is no response body
+         if (response_body) // return=representation
+         {
+            def parser = new OpenEhrJsonParserQuick()
+            def ehr = parser.parseEhrDto(response_body)
+            return ehr
+         }
+         else // return=minimal
+         {
+            return null
+         }
       }
 
       // Expects a JSON error
@@ -167,9 +171,17 @@ class OpenEhrRestClient {
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201))
       {
-         def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         // For 201 with Prefer:return=minimal there is no response body
+         if (response_body) // return=representation
+         {
+            def parser = new OpenEhrJsonParserQuick()
+            def ehr = parser.parseEhrDto(response_body)
+            return ehr
+         }
+         else // return=minimal
+         {
+            return null
+         }
       }
 
       // Expects a JSON error
@@ -217,9 +229,17 @@ class OpenEhrRestClient {
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201))
       {
-         def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         // For 201 with Prefer:return=minimal there is no response body
+         if (response_body) // return=representation
+         {
+            def parser = new OpenEhrJsonParserQuick()
+            def ehr = parser.parseEhrDto(response_body)
+            return ehr
+         }
+         else // return=minimal
+         {
+            return null
+         }
       }
 
       // Expects a JSON error
@@ -265,9 +285,17 @@ class OpenEhrRestClient {
 
       if (this.lastResponseCode.equals(201))
       {
-         def parser = new OpenEhrJsonParserQuick()
-         def ehr = parser.parseEhrDto(response_body)
-         return ehr
+         // For 201 with Prefer:return=minimal there is no response body
+         if (response_body) // return=representation
+         {
+           def parser = new OpenEhrJsonParserQuick()
+           def ehr = parser.parseEhrDto(response_body)
+           return ehr
+         }
+         else // return=minimal
+         {
+            return null
+         }
       }
 
       def json_parser = new JsonSlurper()
@@ -348,9 +376,18 @@ class OpenEhrRestClient {
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201))
       {
-         def parser = new OpenEhrJsonParserQuick()
-         def compo_out = parser.parseJson(response_body)
-         return compo_out
+         // For 201 with Prefer:return=minimal there is no response body
+         if (response_body) // return=representation
+         {
+            println response_body
+            def parser = new OpenEhrJsonParserQuick()
+            def compo_out = parser.parseJson(response_body)
+            return compo_out
+         }
+         else // return=minimal
+         {
+            return null
+         }
       }
 
 
@@ -380,9 +417,17 @@ class OpenEhrRestClient {
 
       if (this.lastResponseCode.equals(200))
       {
-         def parser = new OpenEhrJsonParserQuick()
-         def compo_out = parser.parseJson(response_body)
-         return compo_out
+         // For 201 with Prefer:return=minimal there is no response body
+         if (response_body) // return=representation
+         {
+            def parser = new OpenEhrJsonParserQuick()
+            def compo_out = parser.parseJson(response_body)
+            return compo_out
+         }
+         else // return=minimal
+         {
+            return null
+         }
       }
 
 
@@ -445,9 +490,17 @@ class OpenEhrRestClient {
       // TODO: need to check for other 2xx codes and report a warning since it's not strictly compliant
       if (this.lastResponseCode.equals(200))
       {
-         def parser = new OpenEhrJsonParserQuick()
-         def compo_out = parser.parseJson(response_body)
-         return compo_out
+         // For 201 with Prefer:return=minimal there is no response body
+         if (response_body) // return=representation
+         {
+            def parser = new OpenEhrJsonParserQuick()
+            def compo_out = parser.parseJson(response_body)
+            return compo_out
+         }
+         else // return=minimal
+         {
+            return null
+         }
       }
 
       // Expects a JSON error
@@ -838,6 +891,15 @@ class OpenEhrRestClient {
             // this throws an exception if the response status code is not 2xx
             response_body = connection.getInputStream().getText()
          }
+
+         // Response Headers
+         // REF: https://specifications.openehr.org/releases/ITS-REST/latest/overview.html#tag/Requests_and_responses/HTTP-headers/ETag-and-Last-Modified
+
+         // [Keep-Alive:[timeout=60], Transfer-Encoding:[chunked], null:[HTTP/1.1 201], ETag:[fabc2805-46ce-4bc0-9c2f-5659095a1046], Connection:[keep-alive], Set-Cookie:[JSESSIONID=55FD0A496C1EBAB5824DC62A19679F60; Path=/; HttpOnly], Vary:[Access-Control-Request-Headers, Access-Control-Request-Method, Origin], Date:[Sat, 24 Aug 2024 20:20:29 GMT]]
+
+         Map responseHeaders = connection.getHeaderFields()
+         lastResponseHeaders['ETag'] = responseHeaders['ETag'] ? responseHeaders['ETag'][0] : null // NOTE: depending on the server, this chould be null
+         lastResponseHeaders['Last-Modified'] = responseHeaders['Last-Modified'] ? responseHeaders['Last-Modified'] : null // NOTE: this could also be null
       }
       catch (java.net.UnknownHostException e)
       {
