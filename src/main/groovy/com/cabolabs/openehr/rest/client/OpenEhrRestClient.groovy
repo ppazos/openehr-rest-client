@@ -121,19 +121,15 @@ class OpenEhrRestClient {
       String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (this.lastResponseCode.equals(201))
+      if (this.lastResponseCode.equals(201)) // return=representation
       {
-         // For 201 with Prefer:return=minimal there is no response body
-         if (response_body) // return=representation
-         {
-            def parser = new OpenEhrJsonParserQuick()
-            def ehr = parser.parseEhrDto(response_body)
-            return ehr
-         }
-         else // return=minimal
-         {
-            return null
-         }
+         def parser = new OpenEhrJsonParserQuick()
+         def ehr = parser.parseEhrDto(response_body)
+         return ehr
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
       }
 
       // Expects a JSON error
@@ -169,19 +165,15 @@ class OpenEhrRestClient {
       String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (this.lastResponseCode.equals(201))
+      if (this.lastResponseCode.equals(201)) // return=representation
       {
-         // For 201 with Prefer:return=minimal there is no response body
-         if (response_body) // return=representation
-         {
-            def parser = new OpenEhrJsonParserQuick()
-            def ehr = parser.parseEhrDto(response_body)
-            return ehr
-         }
-         else // return=minimal
-         {
-            return null
-         }
+         def parser = new OpenEhrJsonParserQuick()
+         def ehr = parser.parseEhrDto(response_body)
+         return ehr
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
       }
 
       // Expects a JSON error
@@ -227,19 +219,15 @@ class OpenEhrRestClient {
       String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (this.lastResponseCode.equals(201))
+      if (this.lastResponseCode.equals(201))  // return=representation
       {
-         // For 201 with Prefer:return=minimal there is no response body
-         if (response_body) // return=representation
-         {
-            def parser = new OpenEhrJsonParserQuick()
-            def ehr = parser.parseEhrDto(response_body)
-            return ehr
-         }
-         else // return=minimal
-         {
-            return null
-         }
+         def parser = new OpenEhrJsonParserQuick()
+         def ehr = parser.parseEhrDto(response_body)
+         return ehr
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
       }
 
       // Expects a JSON error
@@ -283,19 +271,15 @@ class OpenEhrRestClient {
       // Response will always be a json string
       String response_body = doRequest(req)
 
-      if (this.lastResponseCode.equals(201))
+      if (this.lastResponseCode.equals(201)) // return=representation
       {
-         // For 201 with Prefer:return=minimal there is no response body
-         if (response_body) // return=representation
-         {
-           def parser = new OpenEhrJsonParserQuick()
-           def ehr = parser.parseEhrDto(response_body)
-           return ehr
-         }
-         else // return=minimal
-         {
-            return null
-         }
+         def parser = new OpenEhrJsonParserQuick()
+         def ehr = parser.parseEhrDto(response_body)
+         return ehr
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
       }
 
       def json_parser = new JsonSlurper()
@@ -374,20 +358,15 @@ class OpenEhrRestClient {
       String response_body = doRequest(req)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
-      if (this.lastResponseCode.equals(201))
+      if (this.lastResponseCode.equals(201)) // return=representation
       {
-         // For 201 with Prefer:return=minimal there is no response body
-         if (response_body) // return=representation
-         {
-            println response_body
-            def parser = new OpenEhrJsonParserQuick()
-            def compo_out = parser.parseJson(response_body)
-            return compo_out
-         }
-         else // return=minimal
-         {
-            return null
-         }
+         def parser = new OpenEhrJsonParserQuick()
+         def compo_out = parser.parseJson(response_body)
+         return compo_out
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
       }
 
 
@@ -417,17 +396,9 @@ class OpenEhrRestClient {
 
       if (this.lastResponseCode.equals(200))
       {
-         // For 201 with Prefer:return=minimal there is no response body
-         if (response_body) // return=representation
-         {
-            def parser = new OpenEhrJsonParserQuick()
-            def compo_out = parser.parseJson(response_body)
-            return compo_out
-         }
-         else // return=minimal
-         {
-            return null
-         }
+         def parser = new OpenEhrJsonParserQuick()
+         def compo_out = parser.parseJson(response_body)
+         return compo_out
       }
 
 
@@ -488,19 +459,15 @@ class OpenEhrRestClient {
 
       // NOTE: the openEHR API responds 200 for updates
       // TODO: need to check for other 2xx codes and report a warning since it's not strictly compliant
-      if (this.lastResponseCode.equals(200))
+      if (this.lastResponseCode.equals(200)) // return=representation
       {
-         // For 201 with Prefer:return=minimal there is no response body
-         if (response_body) // return=representation
-         {
-            def parser = new OpenEhrJsonParserQuick()
-            def compo_out = parser.parseJson(response_body)
-            return compo_out
-         }
-         else // return=minimal
-         {
-            return null
-         }
+         def parser = new OpenEhrJsonParserQuick()
+         def compo_out = parser.parseJson(response_body)
+         return compo_out
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
       }
 
       // Expects a JSON error
@@ -723,6 +690,10 @@ class OpenEhrRestClient {
          def out = parser.parseActorDto(response_body) // NOTE: parseJson doesn't work with the ActorDto
          return out
       }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
+      }
 
 
       // Expects a JSON error
@@ -777,6 +748,10 @@ class OpenEhrRestClient {
 
          def out = parser.parseJson(response_body)
          return out
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
       }
 
 
