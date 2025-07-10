@@ -364,6 +364,16 @@ class OpenEhrRestClientMinimalTest extends Specification {
          get_composition.uid.value == createdCompoId
    }
 
+   def "D. get actor"()
+   {
+      when:
+         def get_actor = client.getActor("c8ceb703-b0ae-42c4-9312-d95cc4c32d51::ATOMIK::1") // FIXME: this is a hardcoded value, should be a valid actor id
+
+      then:
+         get_actor != null
+
+   }
+
 
    private def create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
    {

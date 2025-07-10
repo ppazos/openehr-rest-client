@@ -3,6 +3,7 @@ package com.cabolabs.openehr.rest.client
 import com.cabolabs.openehr.rm_1_0_2.ehr.*
 import com.cabolabs.openehr.rm_1_0_2.composition.Composition
 import com.cabolabs.openehr.rm_1_0_2.demographic.PartyRelationship
+import com.cabolabs.openehr.rm_1_0_2.demographic.Actor
 
 import com.cabolabs.openehr.dto_1_0_2.ehr.EhrDto
 import com.cabolabs.openehr.dto_1_0_2.demographic.ActorDto
@@ -784,6 +785,37 @@ class OpenEhrRestClient {
    executeStoredQuery
    */
 
+   Actor getActor(String version_uid)
+   {
+      def req = new URL("${this.baseUrl}/demographic/actor/${version_uid}").openConnection()
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+      req.setRequestProperty("Accept",        this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+      // Response will always be a json string
+      String response_body = doRequest(req)
+
+      if (this.lastResponseCode.equals(200))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         parser.setSchemaFlavorAPI()
+
+         def actor_out = parser.parseJson(response_body) //parser.parseActorDto(response_body) // NOTE: parseJson doesn't work with the ActorDto
+         return actor_out
+      }
+
+      // Expects a JSON error
+      def json_parser = new JsonSlurper()
+      this.lastError = json_parser.parseText(response_body)
+
+
+      return null // no compo is returned if there is an error
+   }
+
 
    // QUERY (tests)
 
@@ -827,6 +859,8 @@ class OpenEhrRestClient {
 
       return null // no compo is returned if there is an error
    }
+
+   // TODO: execute ad-hoc query
 
    static String removeBOM(byte[] bytes)
    {
