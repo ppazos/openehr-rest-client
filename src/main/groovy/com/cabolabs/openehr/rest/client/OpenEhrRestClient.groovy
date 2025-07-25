@@ -813,7 +813,6 @@ class OpenEhrRestClient {
 
       // NOTE: JSON only requests for now
       def serializer = new OpenEhrJsonSerializer()
-
       def body = serializer.serialize(role)
 
       req.getOutputStream().write(body.getBytes("UTF-8"))
@@ -998,10 +997,13 @@ class OpenEhrRestClient {
 
          // [Keep-Alive:[timeout=60], Transfer-Encoding:[chunked], null:[HTTP/1.1 201], ETag:[fabc2805-46ce-4bc0-9c2f-5659095a1046], Connection:[keep-alive], Set-Cookie:[JSESSIONID=55FD0A496C1EBAB5824DC62A19679F60; Path=/; HttpOnly], Vary:[Access-Control-Request-Headers, Access-Control-Request-Method, Origin], Date:[Sat, 24 Aug 2024 20:20:29 GMT]]
 
-         Map responseHeaders = connection.getHeaderFields()
+         // Map<String, List<String>>
+         Map responseHeaders = connection.getHeaderFields() // alternative .getHeaderField(name): String
+         println responseHeaders
+
          lastResponseHeaders['ETag'] = responseHeaders['ETag'] ? responseHeaders['ETag'][0] : null // NOTE: depending on the server, this chould be null
          lastResponseHeaders['Last-Modified'] = responseHeaders['Last-Modified'] ?: null // NOTE: this could also be null
-         lastResponseHeaders['Content-Type'] = responseHeaders['Content-Type'] ?: null // application/json;charset=UTF-8
+         lastResponseHeaders['Content-Type'] = responseHeaders['Content-Type'][0] ?: null // application/json;charset=UTF-8
       }
       catch (java.net.UnknownHostException e)
       {
