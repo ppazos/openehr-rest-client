@@ -2,11 +2,10 @@ package com.cabolabs.openehr.rest.client
 
 import com.cabolabs.openehr.rm_1_0_2.ehr.*
 import com.cabolabs.openehr.rm_1_0_2.composition.Composition
-import com.cabolabs.openehr.rm_1_0_2.demographic.PartyRelationship
-import com.cabolabs.openehr.rm_1_0_2.demographic.Actor
+import com.cabolabs.openehr.rm_1_0_2.demographic.*
 
 import com.cabolabs.openehr.dto_1_0_2.ehr.EhrDto
-import com.cabolabs.openehr.dto_1_0_2.demographic.ActorDto
+import com.cabolabs.openehr.dto_1_0_2.demographic.*
 
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
@@ -133,10 +132,19 @@ class OpenEhrRestClient {
          return null
       }
 
+
+      // FIXME: the parsing should rely on the response Content-Type, not assuming it will be JSON.
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
       return null // no ehr is returned if there is an error
    }
@@ -179,8 +187,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
       return null // no ehr is returned if there is an error
    }
@@ -233,8 +248,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
       return null // no ehr is returned if there is an error
    }
@@ -765,14 +787,77 @@ class OpenEhrRestClient {
       return null // no compo is returned if there is an error
    }
 
+   Role createRole(Role role, String performerObjectId)
+   {
+      def req = new URL("${this.baseUrl}/demographic/actor/${performerObjectId}/role").openConnection()
+
+      req.setRequestMethod("POST")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only requests for now
+      req.setRequestProperty("Content-Type",  "application/json")
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+      // required commiter header
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
+
+      // NOTE: JSON only requests for now
+      def serializer = new OpenEhrJsonSerializer()
+
+      def body = serializer.serialize(role)
+
+      req.getOutputStream().write(body.getBytes("UTF-8"))
+
+       // Response will always be a json string
+      String response_body = doRequest(req)
+
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
+      if (this.lastResponseCode.equals(201))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         parser.setSchemaFlavorAPI()
+
+         def out = parser.parseJson(response_body)
+         return out
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
+      }
+
+
+      // Expects a JSON error
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
+
+
+      return null // no compo is returned if there is an error
+   }
+
 
    /**
    updateEhrStatus
    getComposition at time
-   createActor
+
    updateActor
-   getActor
-   createRelationship
+
    updateRelationship
    getRelationship
    createDirectory
@@ -791,7 +876,7 @@ class OpenEhrRestClient {
 
       req.setRequestMethod("GET")
       req.setDoOutput(true)
-      req.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Accept", this.accept.toString())
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -809,8 +894,15 @@ class OpenEhrRestClient {
       }
 
       // Expects a JSON error
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
 
       return null // no compo is returned if there is an error
@@ -908,7 +1000,8 @@ class OpenEhrRestClient {
 
          Map responseHeaders = connection.getHeaderFields()
          lastResponseHeaders['ETag'] = responseHeaders['ETag'] ? responseHeaders['ETag'][0] : null // NOTE: depending on the server, this chould be null
-         lastResponseHeaders['Last-Modified'] = responseHeaders['Last-Modified'] ? responseHeaders['Last-Modified'] : null // NOTE: this could also be null
+         lastResponseHeaders['Last-Modified'] = responseHeaders['Last-Modified'] ?: null // NOTE: this could also be null
+         lastResponseHeaders['Content-Type'] = responseHeaders['Content-Type'] ?: null // application/json;charset=UTF-8
       }
       catch (java.net.UnknownHostException e)
       {

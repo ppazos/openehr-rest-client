@@ -220,7 +220,7 @@ class OpenEhrRestClientTest extends Specification {
    {
       when:
          def myclient = new OpenEhrRestClient(
-            'http://httpstat.us/500',
+            'http://returnco.de:500/whatever', //'http://httpstat.us/500', // https://httpstatuses.maor.io/500
             new NoAuth(),
             ContentTypeEnum.JSON
          )
@@ -386,6 +386,9 @@ class OpenEhrRestClientTest extends Specification {
 
       if (has_status)
       {
+         String opt = this.getClass().getResource('/ehr_status_any_en_v1.opt').text
+         client.uploadTemplate(opt)
+
          def status = new EhrStatus()
          status.name = new DvText(value:"Generic Status")
          status.archetype_node_id = "openEHR-EHR-EHR_STATUS.generic.v1"

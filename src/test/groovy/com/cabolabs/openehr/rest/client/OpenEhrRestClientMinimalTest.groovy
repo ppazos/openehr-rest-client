@@ -13,11 +13,13 @@ import com.cabolabs.openehr.rm_1_0_2.data_structures.item_structure.ItemTree
 import com.cabolabs.openehr.rm_1_0_2.data_structures.item_structure.representation.Element
 import com.cabolabs.openehr.rm_1_0_2.common.archetyped.*
 import com.cabolabs.openehr.rm_1_0_2.common.generic.PartySelf
+import com.cabolabs.openehr.rm_1_0_2.demographic.*
 
 import com.cabolabs.openehr.formats.OpenEhrJsonParserQuick
 import com.cabolabs.openehr.rest.client.auth.*
 
 import groovy.json.JsonSlurper
+import groovy.json.JsonGenerator
 
 import java.time.*
 
@@ -153,7 +155,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
       then:
          ehr == null // representation=minimal doesn't have a response body
 
-         client.lastResponseCode == 201
+         client.lastResponseCode == 204
 
       // NOTE: all subject_ids should be different to avoid the "patient already have an EHR error", which is expected when you create two EHRs for the same patient
       where:
@@ -204,7 +206,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
    {
       when:
          def myclient = new OpenEhrRestClient(
-            'http://httpstat.us/500',
+            'http://returnco.de:500/whatever',
             new NoAuth(),
             ContentTypeEnum.JSON
          )
@@ -364,14 +366,80 @@ class OpenEhrRestClientMinimalTest extends Specification {
          get_composition.uid.value == createdCompoId
    }
 
-   def "D. get actor"()
+   def "D. create and get actor"()
    {
       when:
-         def get_actor = client.getActor("c8ceb703-b0ae-42c4-9312-d95cc4c32d51::ATOMIK::1") // FIXME: this is a hardcoded value, should be a valid actor id
+         String opt          = this.getClass().getResource('/generic_person.opt').text
+         String json_person  = this.getClass().getResource('/generic_person.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser          = new OpenEhrJsonParserQuick()
+         def person          = parser.parseActorDto(json_person)
+
+         def outPerson       = client.createActor(person)
+         def createPersonUid = client.lastResponseHeaders['ETag']
+
+         def getPerson       = client.getActor(createPersonUid)
 
       then:
-         get_actor != null
+         outPerson == null
+         getPerson != null
+         getPerson.uid.value == createPersonUid
+   }
 
+   def "D. create actor with role"()
+   {
+      when:
+         // Create person
+
+         String opt           = this.getClass().getResource('/generic_person.opt').text
+         String json_person   = this.getClass().getResource('/generic_person.json').text
+
+         client.uploadTemplate(opt)
+
+         def parser           = new OpenEhrJsonParserQuick()
+         def person           = parser.parseActorDto(json_person)
+
+         def outPerson        = client.createActor(person)
+         def createPersonUid  = client.lastResponseHeaders['ETag']
+
+         //def getPerson       = client.getActor(createPersonUid)
+
+
+         // Create role
+
+         String opt_role      = this.getClass().getResource('/generic_role_complete.opt').text
+         String json_role     = this.getClass().getResource('/generic_role_complete.json').text
+
+         client.uploadTemplate(opt_role)
+
+
+         def json_parser      = new JsonSlurper()
+         def json_parsed_role = json_parser.parseText(json_role)
+
+         // Set the reference to role -> person (object_id)
+         def person_object_id = createPersonUid.split(':')[0]
+         json_parsed_role.performer.id.value = person_object_id
+
+         // Back to string
+         def generator = new JsonGenerator.Options()
+            .excludeNulls()
+            .disableUnicodeEscaping()
+            .build()
+
+         json_role            = generator.toJson(json_parsed_role)
+
+         // RM parse role
+         Role role            = parser.parseJson(json_role)
+
+         def outRole          = client.createRole(role, person_object_id)
+
+
+      then:
+         outPerson == null
+         outRole == null
+         //getPerson.uid.value == createPersonUid
    }
 
 
@@ -381,6 +449,9 @@ class OpenEhrRestClientMinimalTest extends Specification {
 
       if (has_status)
       {
+         String opt = this.getClass().getResource('/ehr_status_any_en_v1.opt').text
+         client.uploadTemplate(opt)
+
          def status = new EhrStatus()
          status.name = new DvText(value:"Generic Status")
          status.archetype_node_id = "openEHR-EHR-EHR_STATUS.generic.v1"
@@ -464,7 +535,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
 
    static List valid_cases()
    {
-      // data_set_no | is_queryable | is_modifiable | has_status | subject_id | other_details | ehr_id
+      // data_set_no   | is_queryable | is_modifiable | has_status | subject_id     | other_details | ehr_id
       return [
          [ null,       true,          true,           false,       null,            null,           null    ],
          [ null,       true,          true,           false,       null,            null,           randomUUID() ],
