@@ -999,7 +999,6 @@ class OpenEhrRestClient {
 
          // Map<String, List<String>>
          Map responseHeaders = connection.getHeaderFields() // alternative .getHeaderField(name): String
-         println responseHeaders
 
          lastResponseHeaders['ETag'] = responseHeaders['ETag'] ? responseHeaders['ETag'][0] : null // NOTE: depending on the server, this chould be null
          lastResponseHeaders['Last-Modified'] = responseHeaders['Last-Modified'] ?: null // NOTE: this could also be null

@@ -28,7 +28,7 @@ dependencies {
     // Use the awesome Spock testing and specification framework
     testImplementation 'org.spockframework:spock-core:2.3-groovy-3.0'
 
-    implementation 'com.github.CaboLabs:openEHR-SDK:v2.1.12'
+    implementation 'com.github.CaboLabs:openEHR-SDK:v2.1.15'
 
     //implementation 'log4j:log4j:1.2.17'
     //implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.23.1'
