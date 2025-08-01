@@ -36,6 +36,7 @@ class OpenEhrRestClient {
 
    Map lastResponseHeaders = [:]
    int lastResponseCode
+   boolean lastConnectionProblem = false // true if the last request threw an exception instead of getting a result, in that case, the error returned will be JSON and can be parsed
 
    ContentTypeEnum accept
    PreferEnum      prefer
@@ -103,8 +104,9 @@ class OpenEhrRestClient {
       req.setRequestMethod("POST")
       req.setDoOutput(true)
 
-      req.setRequestProperty("Prefer",        this.prefer.toString())
-      req.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Prefer",         this.prefer.toString())
+      req.setRequestProperty("Accept",         this.accept.toString())
+      req.setRequestProperty("Content-Length", "0")
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -119,6 +121,8 @@ class OpenEhrRestClient {
 
       // Response will always be a json string
       String response_body = doRequest(req)
+
+      println "AAA "+ response_body
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201)) // return=representation
@@ -136,7 +140,7 @@ class OpenEhrRestClient {
       // FIXME: the parsing should rely on the response Content-Type, not assuming it will be JSON.
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -158,6 +162,7 @@ class OpenEhrRestClient {
 
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Content-Length", "0")
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -216,6 +221,7 @@ class OpenEhrRestClient {
       req.setRequestProperty("Content-Type",  "application/json") // add to send a status
       req.setRequestProperty("Prefer",        this.prefer.toString())
       req.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Content-Length", body.size().toString())
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -274,9 +280,10 @@ class OpenEhrRestClient {
       req.setRequestMethod("PUT")
       req.setDoOutput(true)
 
-      req.setRequestProperty("Content-Type",  "application/json") // add to send a status
-      req.setRequestProperty("Prefer",        this.prefer.toString())
-      req.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Content-Type",   "application/json") // add to send a status
+      req.setRequestProperty("Prefer",         this.prefer.toString())
+      req.setRequestProperty("Accept",         this.accept.toString())
+      req.setRequestProperty("Content-Length", body.size().toString())
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -1051,6 +1058,7 @@ class OpenEhrRestClient {
          this.lastResponseHeaders = [:]
          this.lastResponseCode = -1
          this.lastError = [:]
+         this.lastConnectionProblem = false
 
          connection.connect()
 
@@ -1090,10 +1098,14 @@ class OpenEhrRestClient {
          // Checked here because the message of the exception is just the URL and we need
          // a more explicit message.
 
+         def message = JsonOutput.toJson(e.getMessage())[1..-2] // Remove first and last quote // escape
+
          response_body = """{
             \"status\": \"error\",
-            \"message\": \"The host is unreachable: ${e.getMessage()}\"
+            \"message\": \"The host is unreachable: ${message}\"
          }"""
+
+         this.lastConnectionProblem = true
       }
       // Parent exception for UnknownHostException, ConnectException and other network related exceptions
       // also when the response code is 5xx it throws IOException.
@@ -1103,10 +1115,14 @@ class OpenEhrRestClient {
          //println "IOException "+ e.class
          //e.printStackTrace()
 
+         def message = JsonOutput.toJson(e.getMessage()) // escape
+
          response_body = """{
             \"status\": \"error\",
-            \"message\": \"${e.getMessage()}\"
+            \"message\": ${message}
          }"""
+
+         this.lastConnectionProblem = true
       }
       catch (Exception e)
       {
@@ -1114,10 +1130,14 @@ class OpenEhrRestClient {
          //println e.getMessage()
          //e.printStackTrace()
 
+         def message = JsonOutput.toJson(e.getMessage()) // escape
+
          response_body = """{
             \"status\": \"error\",
-            \"message\": \"${e.getMessage()}\"
+            \"message\": ${message}
          }"""
+
+         this.lastConnectionProblem = true
       }
 
 
@@ -1155,10 +1175,16 @@ class OpenEhrRestClient {
             }
             catch(Exception e) // IllegalArgumentException or groovy.json.JsonException
             {
+               println "EEE "+ e.message
+
+               def message = JsonOutput.toJson(response_body) // escape
+
                response_body = """{
                   \"status\": \"error\",
-                  \"message\": \"${response_body}\"
+                  \"message\": ${message}
                }"""
+
+               this.lastConnectionProblem = true
             }
          }
          // TODO: XML

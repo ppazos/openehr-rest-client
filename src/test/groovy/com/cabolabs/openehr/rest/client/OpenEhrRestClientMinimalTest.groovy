@@ -350,6 +350,8 @@ class OpenEhrRestClientMinimalTest extends Specification {
          def compo = parser.parseJson(json_compo)
          def ehr = client.createEhr()
 
+         println "C. "+ client.lastResponseHeaders
+
          def createdEhrId = client.lastResponseHeaders['ETag']
 
          def out_composition = client.createComposition(createdEhrId, compo)
