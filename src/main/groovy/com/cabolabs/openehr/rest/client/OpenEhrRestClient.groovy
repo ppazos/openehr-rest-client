@@ -305,8 +305,15 @@ class OpenEhrRestClient {
          return null
       }
 
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
       return null // no ehr is returned if there is an error
    }
@@ -336,8 +343,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
       return null // no ehr is returned if there is an error
    }
@@ -395,8 +409,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
 
       return null // no compo is returned if there is an error
@@ -427,8 +448,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
 
       return null // no compo is returned if there is an error
@@ -495,8 +523,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
 
       return null // no compo is returned if there is an error
@@ -550,8 +585,15 @@ class OpenEhrRestClient {
       {
          // NOTE: we could parse the error but different CDRs might return whatever they want,
          //       though we could check try parsing JSON then XML then treat it as string.
-         def json_parser = new JsonSlurper()
-         this.lastError = json_parser.parseText(response_body)
+         if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+         {
+            def json_parser = new JsonSlurper()
+            this.lastError = json_parser.parseText(response_body)
+         }
+         else
+         {
+            println "No json errors "+ response_body
+         }
          //this.lastError = [error: req.getErrorStream()?.getText()]
       }
 
@@ -612,8 +654,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
       return null // no ehr is returned if there is an error
    }
@@ -660,8 +709,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      //def json_parser = new JsonSlurper()
-      //this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
       return null // no ehr is returned if there is an error
    }
@@ -721,8 +777,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
 
       return null // no compo is returned if there is an error
@@ -780,8 +843,15 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
 
       return null // no compo is returned if there is an error
@@ -943,9 +1013,15 @@ class OpenEhrRestClient {
       }
 
 
-      // Expects a JSON error
-      def json_parser = new JsonSlurper()
-      this.lastError = json_parser.parseText(response_body)
+      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
 
 
       return null // no compo is returned if there is an error
@@ -971,6 +1047,11 @@ class OpenEhrRestClient {
 
       try
       {
+         // reset last XXX
+         this.lastResponseHeaders = [:]
+         this.lastResponseCode = -1
+         this.lastError = [:]
+
          connection.connect()
 
          // NOTE: If we do getResponseCode() here and the response is 4xx or 5xx, then the code below won't
