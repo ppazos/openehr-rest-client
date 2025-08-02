@@ -90,6 +90,11 @@ class OpenEhrRestClient {
       this.headers["openEHR-AUDIT_DETAILS.description"] = value
    }
 
+   HttpURLConnection createConnection(String path)
+   {
+      return new URL(this.baseUrl + path).openConnection()
+   }
+
 
    // EHR
 
@@ -99,14 +104,11 @@ class OpenEhrRestClient {
     */
    EhrDto createEhr()
    {
-      def req = new URL(this.baseUrl +"/ehr").openConnection()
+      //def req = new URL(this.baseUrl +"/ehr").openConnection()
+      def req = createConnection('/ehr')
 
       req.setRequestMethod("POST")
       req.setDoOutput(true)
-
-      req.setRequestProperty("Prefer",         this.prefer.toString())
-      req.setRequestProperty("Accept",         this.accept.toString())
-      req.setRequestProperty("Content-Length", "0")
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -119,10 +121,11 @@ class OpenEhrRestClient {
 
       req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
 
+      req.setRequestProperty("Prefer", this.prefer.toString())
+      req.setRequestProperty("Accept", this.accept.toString())
+
       // Response will always be a json string
       String response_body = doRequest(req)
-
-      println "AAA "+ response_body
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201)) // return=representation
@@ -160,9 +163,8 @@ class OpenEhrRestClient {
       req.setRequestMethod("PUT")
       req.setDoOutput(true)
 
-      req.setRequestProperty("Prefer",        this.prefer.toString())
-      req.setRequestProperty("Accept",        this.accept.toString())
-      req.setRequestProperty("Content-Length", "0")
+      req.setRequestProperty("Prefer", this.prefer.toString())
+      req.setRequestProperty("Accept", this.accept.toString())
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -192,7 +194,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -218,10 +220,9 @@ class OpenEhrRestClient {
       req.setRequestMethod("POST")
       req.setDoOutput(true)
 
-      req.setRequestProperty("Content-Type",  "application/json") // add to send a status
-      req.setRequestProperty("Prefer",        this.prefer.toString())
-      req.setRequestProperty("Accept",        this.accept.toString())
-      req.setRequestProperty("Content-Length", body.size().toString())
+      req.setRequestProperty("Content-Type", "application/json") // add to send a status
+      req.setRequestProperty("Prefer",       this.prefer.toString())
+      req.setRequestProperty("Accept",       this.accept.toString())
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -234,11 +235,11 @@ class OpenEhrRestClient {
 
       req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
 
-      req.getOutputStream().write(body.getBytes("UTF-8"))
+      // req.getOutputStream().write(body.getBytes("UTF-8"))
 
 
       // Response will always be a json string
-      String response_body = doRequest(req)
+      String response_body = doRequest(req, body)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201))  // return=representation
@@ -254,7 +255,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -280,10 +281,9 @@ class OpenEhrRestClient {
       req.setRequestMethod("PUT")
       req.setDoOutput(true)
 
-      req.setRequestProperty("Content-Type",   "application/json") // add to send a status
-      req.setRequestProperty("Prefer",         this.prefer.toString())
-      req.setRequestProperty("Accept",         this.accept.toString())
-      req.setRequestProperty("Content-Length", body.size().toString())
+      req.setRequestProperty("Content-Type", "application/json") // add to send a status
+      req.setRequestProperty("Prefer",       this.prefer.toString())
+      req.setRequestProperty("Accept",       this.accept.toString())
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -296,10 +296,10 @@ class OpenEhrRestClient {
 
       req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
 
-      req.getOutputStream().write(body.getBytes("UTF-8"))
+      // req.getOutputStream().write(body.getBytes("UTF-8"))
 
       // Response will always be a json string
-      String response_body = doRequest(req)
+      String response_body = doRequest(req, body)
 
       if (this.lastResponseCode.equals(201)) // return=representation
       {
@@ -312,7 +312,7 @@ class OpenEhrRestClient {
          return null
       }
 
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -350,7 +350,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -395,11 +395,11 @@ class OpenEhrRestClient {
       def serializer = new OpenEhrJsonSerializer()
       def body = serializer.serialize(compo)
 
-      req.getOutputStream().write(body.getBytes("UTF-8"))
+      // req.getOutputStream().write(body.getBytes("UTF-8"))
 
 
       // Response will always be a json string
-      String response_body = doRequest(req)
+      String response_body = doRequest(req, body)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201)) // return=representation
@@ -416,7 +416,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -455,7 +455,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -509,11 +509,11 @@ class OpenEhrRestClient {
       def serializer = new OpenEhrJsonSerializer()
       def body = serializer.serialize(compo)
 
-      req.getOutputStream().write(body.getBytes("UTF-8"))
+      // req.getOutputStream().write(body.getBytes("UTF-8"))
 
 
       // Response will always be a json string
-      String response_body = doRequest(req)
+      String response_body = doRequest(req. body)
 
       // NOTE: the openEHR API responds 200 for updates
       // TODO: need to check for other 2xx codes and report a warning since it's not strictly compliant
@@ -530,7 +530,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -556,8 +556,8 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: the upload template request will always be XML until we have a JSON schema for OPT
-      req.setRequestProperty("Content-Type",  "application/xml")
-      req.setRequestProperty("Accept",        "application/xml") //this.accept.toString())
+      req.setRequestProperty("Content-Type", "application/xml")
+      req.setRequestProperty("Accept",       "application/xml") //this.accept.toString())
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
@@ -567,11 +567,11 @@ class OpenEhrRestClient {
 
       // NOTE: getOutputStream() actually sends the request
       // https://github.com/frohoff/jdk8u-dev-jdk/blob/master/src/share/classes/sun/net/www/protocol/http/HttpURLConnection.java#L1281-L1292
-      req.getOutputStream().write(opt.getBytes("UTF-8"))
+      // req.getOutputStream().write(opt.getBytes("UTF-8"))
 
 
       // Response will always be a json string
-      String response_body = doRequest(req)
+      String response_body = doRequest(req, opt)
 
       // TODO: make configurable if it accepts a 409 Conflict as successful for this service
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
@@ -592,7 +592,7 @@ class OpenEhrRestClient {
       {
          // NOTE: we could parse the error but different CDRs might return whatever they want,
          //       though we could check try parsing JSON then XML then treat it as string.
-         if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+         if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
          {
             def json_parser = new JsonSlurper()
             this.lastError = json_parser.parseText(response_body)
@@ -661,7 +661,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -716,7 +716,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -761,11 +761,11 @@ class OpenEhrRestClient {
       // FIXME: serialize DTO!
       def body = serializer.serialize(actor)
 
-      req.getOutputStream().write(body.getBytes("UTF-8"))
+      // req.getOutputStream().write(body.getBytes("UTF-8"))
 
 
       // Response will always be a json string
-      String response_body = doRequest(req)
+      String response_body = doRequest(req, body)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201))
@@ -784,7 +784,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -827,11 +827,11 @@ class OpenEhrRestClient {
       def serializer = new OpenEhrJsonSerializer()
       def body = serializer.serialize(relationship)
 
-      req.getOutputStream().write(body.getBytes("UTF-8"));
+      // req.getOutputStream().write(body.getBytes("UTF-8"));
 
 
       // Response will always be a json string
-      String response_body = doRequest(req)
+      String response_body = doRequest(req, body)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201))
@@ -850,7 +850,7 @@ class OpenEhrRestClient {
 
       // Expects a JSON error
       // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -892,10 +892,10 @@ class OpenEhrRestClient {
       def serializer = new OpenEhrJsonSerializer()
       def body = serializer.serialize(role)
 
-      req.getOutputStream().write(body.getBytes("UTF-8"))
+      // req.getOutputStream().write(body.getBytes("UTF-8"))
 
        // Response will always be a json string
-      String response_body = doRequest(req)
+      String response_body = doRequest(req, body)
 
       // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
       if (this.lastResponseCode.equals(201))
@@ -913,7 +913,7 @@ class OpenEhrRestClient {
 
 
       // Expects a JSON error
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -970,7 +970,7 @@ class OpenEhrRestClient {
       }
 
       // Expects a JSON error
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -1020,7 +1020,7 @@ class OpenEhrRestClient {
       }
 
 
-      if (this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
       {
          def json_parser = new JsonSlurper()
          this.lastError = json_parser.parseText(response_body)
@@ -1047,7 +1047,7 @@ class OpenEhrRestClient {
 
 
    // connection https://github.com/openjdk/jdk11u/blob/master/src/java.base/share/classes/sun/net/www/protocol/http/HttpURLConnection.java
-   String doRequest(HttpURLConnection connection)
+   String doRequest(HttpURLConnection connection, String body = "")
    {
       String response_body
       def stream
@@ -1060,7 +1060,16 @@ class OpenEhrRestClient {
          this.lastError = [:]
          this.lastConnectionProblem = false
 
+
+         connection.setRequestProperty("Content-Length", body.size().toString())
+
+         if (body)
+         {
+            connection.getOutputStream().write(body.getBytes("UTF-8"))
+         }
+
          connection.connect()
+
 
          // NOTE: If we do getResponseCode() here and the response is 4xx or 5xx, then the code below won't
          // throw an IOException! Though by looking at the OpenJDK code, it should always throw the exception
@@ -1091,7 +1100,11 @@ class OpenEhrRestClient {
 
          lastResponseHeaders['ETag'] = responseHeaders['ETag'] ? responseHeaders['ETag'][0] : null // NOTE: depending on the server, this chould be null
          lastResponseHeaders['Last-Modified'] = responseHeaders['Last-Modified'] ?: null // NOTE: this could also be null
-         lastResponseHeaders['Content-Type'] = responseHeaders['Content-Type'][0] ?: null // application/json;charset=UTF-8
+
+         if (responseHeaders['Content-Type'])
+         {
+            lastResponseHeaders['Content-Type'] = responseHeaders['Content-Type'][0] ?: null // application/json;charset=UTF-8
+         }
       }
       catch (java.net.UnknownHostException e)
       {
@@ -1102,27 +1115,30 @@ class OpenEhrRestClient {
 
          response_body = """{
             \"status\": \"error\",
+            \"context\": \"This is an 'unknown host' error, check the host is correct\",
             \"message\": \"The host is unreachable: ${message}\"
          }"""
 
          this.lastConnectionProblem = true
+
+         return response_body
       }
       // Parent exception for UnknownHostException, ConnectException and other network related exceptions
       // also when the response code is 5xx it throws IOException.
       // We shouldn't expect a response body when there is an exception, se we create one ourselves.
       catch (java.io.IOException e)
       {
-         //println "IOException "+ e.class
-         //e.printStackTrace()
-
          def message = JsonOutput.toJson(e.getMessage()) // escape
 
          response_body = """{
             \"status\": \"error\",
+            \"context\": \"This is a network related error, it's probable the connection couldn't be established\",
             \"message\": ${message}
          }"""
 
          this.lastConnectionProblem = true
+
+         return response_body
       }
       catch (Exception e)
       {
@@ -1132,12 +1148,17 @@ class OpenEhrRestClient {
 
          def message = JsonOutput.toJson(e.getMessage()) // escape
 
+         e.printStackTrace()
+
          response_body = """{
             \"status\": \"error\",
+            \"context\": \"This is a generic error handler\",
             \"message\": ${message}
          }"""
 
          this.lastConnectionProblem = true
+
+         return response_body
       }
 
 
@@ -1166,6 +1187,7 @@ class OpenEhrRestClient {
       // THIS IS AN EXTRA CHECK NOT REALLY NEEDED!
       if (response_body)
       {
+         // println ">>> response body "+ response_body
          if (this.accept == ContentTypeEnum.JSON)
          {
             try
@@ -1175,16 +1197,16 @@ class OpenEhrRestClient {
             }
             catch(Exception e) // IllegalArgumentException or groovy.json.JsonException
             {
-               println "EEE "+ e.message
-
                def message = JsonOutput.toJson(response_body) // escape
 
                response_body = """{
                   \"status\": \"error\",
+                  \"context\": \"We got a response from the server but it's not in the expected format\",
                   \"message\": ${message}
                }"""
 
                this.lastConnectionProblem = true
+               // This is not a connection problem, we got a result but it's not what's expected, but lets the client code to process the JSON as a response
             }
          }
          // TODO: XML

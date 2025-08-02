@@ -206,7 +206,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
    {
       when:
          def myclient = new OpenEhrRestClient(
-            'http://returnco.de:500/whatever',
+            'http://localhost/httpstatus.php?status=500',
             new NoAuth(),
             ContentTypeEnum.JSON
          )
@@ -217,11 +217,8 @@ class OpenEhrRestClientMinimalTest extends Specification {
 
       then:
          ehr == null
-
-         // NOTE: this is the error returned by the httpstat.us website when Accept: json is provided
-         myclient.lastError.code == 500
-         myclient.lastError.description == "Internal Server Error"
-         //thrown(java.net.ConnectException)
+         myclient.lastResponseCode == 500
+         myclient.lastError.status == "error"
    }
 
    def "A.a. get ehr"()
@@ -281,7 +278,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
          myclient.uploadTemplate(opt)
 
       then:
-         thrown(java.net.UnknownHostException)
+         myclient.lastError.status == 'error'
    }
 
    def "B.2. upload template no connection"()
@@ -298,8 +295,13 @@ class OpenEhrRestClientMinimalTest extends Specification {
          String opt = this.getClass().getResource('/minimal_evaluation.opt').text
          myclient.uploadTemplate(opt)
 
+
+         println myclient.lastError
+         println myclient.lastResponseCode
+         println myclient.lastResponseHeaders
+
       then:
-         thrown(java.net.ConnectException)
+         myclient.lastError.status == 'error'
    }
 
    def "B.a. get templates"()
