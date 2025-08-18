@@ -872,9 +872,73 @@ class OpenEhrRestClient {
       req.setDoOutput(true)
 
       // NOTE: JSON only requests for now
-      req.setRequestProperty("Content-Type",  "application/json")
-      req.setRequestProperty("Prefer",        this.prefer.toString())
-      req.setRequestProperty("Accept",        this.accept.toString())
+      req.setRequestProperty("Content-Type", "application/json")
+      req.setRequestProperty("Prefer",       this.prefer.toString())
+      req.setRequestProperty("Accept",       this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+      // required commiter header
+      if (!this.headers["openEHR-AUDIT_DETAILS.committer"])
+      {
+         throw new Exception("Header openEHR-AUDIT_DETAILS.committer is required")
+      }
+
+      req.setRequestProperty("openEHR-AUDIT_DETAILS.committer", this.headers["openEHR-AUDIT_DETAILS.committer"])
+
+
+      // NOTE: JSON only requests for now
+      def serializer = new OpenEhrJsonSerializer()
+      def body = serializer.serialize(role)
+
+      // req.getOutputStream().write(body.getBytes("UTF-8"))
+
+       // Response will always be a json string
+      String response_body = doRequest(req, body)
+
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
+      if (this.lastResponseCode.equals(201))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         parser.setSchemaFlavorAPI()
+
+         def out = parser.parseJson(response_body)
+         return out
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
+      }
+
+
+      // Expects a JSON error
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
+
+
+      return null // no compo is returned if there is an error
+   }
+
+
+   RoleDto createRole(RoleDto role, String performerObjectId)
+   {
+      def req = new URL("${this.baseUrl}/demographic/actor/${performerObjectId}/role").openConnection()
+
+      req.setRequestMethod("POST")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only requests for now
+      req.setRequestProperty("Content-Type", "application/json")
+      req.setRequestProperty("Prefer",       this.prefer.toString())
+      req.setRequestProperty("Accept",       this.accept.toString())
 
       // makes the authenticaiton magic over the current request
       this.auth.apply(req)
