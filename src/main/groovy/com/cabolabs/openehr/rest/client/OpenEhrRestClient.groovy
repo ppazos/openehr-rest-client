@@ -1010,7 +1010,7 @@ class OpenEhrRestClient {
    executeStoredQuery
    */
 
-   Actor getActor(String version_uid)
+   ActorDto getActor(String version_uid)
    {
       def req = new URL("${this.baseUrl}/demographic/actor/${version_uid}").openConnection()
 
