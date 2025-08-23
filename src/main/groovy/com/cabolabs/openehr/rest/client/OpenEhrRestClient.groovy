@@ -1143,36 +1143,70 @@ class OpenEhrRestClient {
          {
             boolean retrieveData = parameters.retrieveData ?: false
 
+            def parsed_items = []
+
             if (retrieveData)
             {
                def parser = new OpenEhrJsonParserQuick()
-               def locatable = parser.parseJson(/* TODO: we need a method that accepts an already json parsed object, not a string */)
+               response_json.result.each { item ->
+                  parsed_items << parser.parseJson(item)
+               }
+            }
+            else
+            {
+               response_json.result.each { item ->
+                  parsed_items << new QueryResultItem(item)
+               }
             }
 
             return new QueryResult(
-               resultType: response_json._type,
-               result: response_json.result,    //  FIXME: if retrieveData => This should be parsed to the locatable or summary object
+               resultType:   response_json._type,
+               result:       parsed_items,    //  FIXME: if retrieveData => This should be parsed to the locatable or summary object
                retrieveData: retrieveData,
-               offset: response_json.pagination?.offset ?: 0,
-               max: response_json.pagination?.max ?: 0
+               offset:       response_json.pagination?.offset ?: 0,
+               max:          response_json.pagination?.max ?: 0
             )
          }
          else if (response_json._type == 'query_result_grouped')
          {
             boolean retrieveData = parameters.retrieveData ?: false
 
+            def parsed_items = [:] // ehr_id -> list of items
+
             if (retrieveData)
             {
-               def parser = new OpenEhrJsonParserQuick()
-               // TODO:
+               response_json.result.each { ehr_id, items ->
+
+                  def parsed_item_list = []
+                  def parser = new OpenEhrJsonParserQuick()
+
+                  items.each { item ->
+                     parsed_item_list << parser.parseJson(item)
+                  }
+
+                  parsed_items[ehr_id] = parsed_item_list
+               }
+            }
+            else
+            {
+               response_json.result.each { ehr_id, items ->
+
+                  def parsed_item_list = []
+
+                  items.each { item ->
+                     parsed_item_list << new QueryResultItem(item)
+                  }
+
+                  parsed_items[ehr_id] = parsed_item_list
+               }
             }
 
             return new QueryResult(
-               resultType: response_json._type,
-               result: response_json.result,   //  FIXME: if retrieveData => This should be parsed to the locatable or summary object
+               resultType:   response_json._type,
+               result:       parsed_items,
                retrieveData: retrieveData,
-               offset: response_json.pagination?.offset ?: 0,
-               max: response_json.pagination?.max ?: 0
+               offset:       response_json.pagination?.offset ?: 0,
+               max:          response_json.pagination?.max ?: 0
             )
          }
          else
