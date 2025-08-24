@@ -1110,7 +1110,7 @@ class OpenEhrRestClient {
 
       def req = new URL("${this.baseUrl}/query/${query_id}/execute?${queryString}").openConnection()
 
-      req.setRequestMethod("POST")
+      req.setRequestMethod("GET")
       req.setDoOutput(true)
 
       // NOTE: JSON only for now
@@ -1155,6 +1155,14 @@ class OpenEhrRestClient {
             else
             {
                response_json.result.each { item ->
+                  if (item.type == 'COMPOSITION')
+                  {
+                     item.startTime = parseDate(item.startTime)
+                  }
+
+                  item.timeCommitted = parseDate(item.timeCommitted)
+                  item.timeCreated   = parseDate(item.timeCreated)
+
                   parsed_items << new QueryResultItem(item)
                }
             }
@@ -1194,6 +1202,14 @@ class OpenEhrRestClient {
                   def parsed_item_list = []
 
                   items.each { item ->
+                     if (item.type == 'COMPOSITION')
+                     {
+                        item.startTime = parseDate(item.startTime)
+                     }
+
+                     item.timeCommitted = parseDate(item.timeCommitted)
+                     item.timeCreated   = parseDate(item.timeCreated)
+
                      parsed_item_list << new QueryResultItem(item)
                   }
 
@@ -1413,4 +1429,11 @@ class OpenEhrRestClient {
       }
    }
    */
+
+   private Date parseDate(String dateStr)
+   {
+      java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+      sdf.timeZone = TimeZone.getTimeZone("UTC")
+      return sdf.parse(dateStr)
+   }
 }
