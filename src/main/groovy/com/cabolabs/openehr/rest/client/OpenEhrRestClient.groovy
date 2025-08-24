@@ -1098,6 +1098,145 @@ class OpenEhrRestClient {
       return null // no compo is returned if there is an error
    }
 
+   // Query result types: query_result_count, query_result_list and query_result_grouped (grouped by ehr_id)
+   // if count key is in the result, it's a count query
+   // if the resultType is composition, ehr_status or folder, it can be grouped by ehr_id or not, depending on the configuration of the server, if it's grouped by ehr_id, the result is a map, if not, the result is a list
+   QueryResult executeQuery(String query_id, Map<String, String> parameters = [:])
+   {
+      // Build query string
+      def queryString = parameters.collect { k, v ->
+         "${URLEncoder.encode(k.toString(), 'UTF-8')}=${URLEncoder.encode(v.toString(), 'UTF-8')}"
+      }.join('&')
+
+      def req = new URL("${this.baseUrl}/query/${query_id}/execute?${queryString}").openConnection()
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only for now
+      req.setRequestProperty("Content-Type",  "application/json")
+      // req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+
+      // Response will always be a json string
+      String response_body = doRequest(req)
+
+      if (this.lastResponseCode.equals(200))
+      {
+         def json_parser = new JsonSlurper()
+         def response_json  = json_parser.parseText(response_body)
+
+
+         if (response_json._type == 'query_result_count')
+         {
+            return new QueryResult(
+               resultType: response_json._type,
+               count: response_json.count,
+               retrieveData: false
+            )
+         }
+         else if (response_json._type == 'query_result_list')
+         {
+            boolean retrieveData = parameters.retrieveData ?: false
+
+            def parsed_items = []
+
+            if (retrieveData)
+            {
+               def parser = new OpenEhrJsonParserQuick()
+               response_json.result.each { item ->
+                  parsed_items << parser.parseJson(item)
+               }
+            }
+            else
+            {
+               response_json.result.each { item ->
+                  if (item.type == 'COMPOSITION')
+                  {
+                     item.startTime = parseDate(item.startTime)
+                  }
+
+                  item.timeCommitted = parseDate(item.timeCommitted)
+                  item.timeCreated   = parseDate(item.timeCreated)
+
+                  parsed_items << new QueryResultItem(item)
+               }
+            }
+
+            return new QueryResult(
+               resultType:   response_json._type,
+               result:       parsed_items,    //  FIXME: if retrieveData => This should be parsed to the locatable or summary object
+               retrieveData: retrieveData,
+               offset:       response_json.pagination?.offset ?: 0,
+               max:          response_json.pagination?.max ?: 0
+            )
+         }
+         else if (response_json._type == 'query_result_grouped')
+         {
+            boolean retrieveData = parameters.retrieveData ?: false
+
+            def parsed_items = [:] // ehr_id -> list of items
+
+            if (retrieveData)
+            {
+               response_json.result.each { ehr_id, items ->
+
+                  def parsed_item_list = []
+                  def parser = new OpenEhrJsonParserQuick()
+
+                  items.each { item ->
+                     parsed_item_list << parser.parseJson(item)
+                  }
+
+                  parsed_items[ehr_id] = parsed_item_list
+               }
+            }
+            else
+            {
+               response_json.result.each { ehr_id, items ->
+
+                  def parsed_item_list = []
+
+                  items.each { item ->
+                     if (item.type == 'COMPOSITION')
+                     {
+                        item.startTime = parseDate(item.startTime)
+                     }
+
+                     item.timeCommitted = parseDate(item.timeCommitted)
+                     item.timeCreated   = parseDate(item.timeCreated)
+
+                     parsed_item_list << new QueryResultItem(item)
+                  }
+
+                  parsed_items[ehr_id] = parsed_item_list
+               }
+            }
+
+            return new QueryResult(
+               resultType:   response_json._type,
+               result:       parsed_items,
+               retrieveData: retrieveData,
+               offset:       response_json.pagination?.offset ?: 0,
+               max:          response_json.pagination?.max ?: 0
+            )
+         }
+         else
+         {
+            throw new Exception("Unknown query result type: ${response_json._type}")
+         }
+
+         // def parser = new OpenEhrJsonParserQuick()
+         // def locatable_out = parser.parseJson(response_body)
+         // return locatable_out
+      }
+
+   }
+
    // TODO: execute ad-hoc query
 
    static String removeBOM(byte[] bytes)
@@ -1290,4 +1429,11 @@ class OpenEhrRestClient {
       }
    }
    */
+
+   private Date parseDate(String dateStr)
+   {
+      java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+      sdf.timeZone = TimeZone.getTimeZone("UTC")
+      return sdf.parse(dateStr)
+   }
 }

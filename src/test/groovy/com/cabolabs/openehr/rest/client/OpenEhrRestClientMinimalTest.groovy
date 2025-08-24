@@ -142,6 +142,49 @@ class OpenEhrRestClientMinimalTest extends Specification {
    }
 
 
+   // FIXME: create a real test:
+   // upload template
+   // commit some data
+   // send the query (create or pass transient query)
+   // check results
+   def "Execute actor query"()
+   {
+      when:
+         def query_id = "98c60e88-a5f4-4a99-9e1d-90f4d8b15a37"
+         def parameters = [
+            '$primer_nombre_value_value': 'pau',
+            '$primer_apellido_value_value': 'pau'
+         ]
+
+         def result = client.executeQuery(query_id, parameters)
+
+      then:
+         result != null
+         result.resultType == 'query_result_list'
+         result.result.size() > 0
+         result.result[0] instanceof QueryResultItem // summary
+   }
+
+   def "Execute actor retrieve data query"()
+   {
+      when:
+         def query_id = "98c60e88-a5f4-4a99-9e1d-90f4d8b15a37"
+         def parameters = [
+            '$primer_nombre_value_value': 'pau',
+            '$primer_apellido_value_value': 'pau',
+            'retrieveData': true
+         ]
+
+         def result = client.executeQuery(query_id, parameters)
+
+      then:
+         result != null
+         result.resultType == 'query_result_list'
+         result.result.size() > 0
+         result.result[0] instanceof Locatable // summary
+   }
+
+
    /**
     * Test EHR creation with all possible combinations of valid EHR_STATUS.
     * This test case doesn't focus on data validation against OPT constraints.
