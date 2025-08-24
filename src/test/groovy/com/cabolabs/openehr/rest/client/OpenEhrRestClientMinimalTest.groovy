@@ -142,6 +142,11 @@ class OpenEhrRestClientMinimalTest extends Specification {
    }
 
 
+   // FIXME: create a real test:
+   // upload template
+   // commit some data
+   // send the query (create or pass transient query)
+   // check results
    def "Execute actor query"()
    {
       when:
