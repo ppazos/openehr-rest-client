@@ -1148,6 +1148,8 @@ class OpenEhrRestClient {
             if (retrieveData)
             {
                def parser = new OpenEhrJsonParserQuick()
+               parser.setSchemaFlavorAPI()
+
                response_json.result.each { item ->
                   parsed_items << parser.parseJson(item)
                }
@@ -1187,6 +1189,7 @@ class OpenEhrRestClient {
 
                   def parsed_item_list = []
                   def parser = new OpenEhrJsonParserQuick()
+                  parser.setSchemaFlavorAPI()
 
                   items.each { item ->
                      parsed_item_list << parser.parseJson(item)
