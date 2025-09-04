@@ -162,7 +162,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
          result != null
          result.resultType == 'query_result_list'
          result.result.size() > 0
-         result.result[0] instanceof QueryResultItem // summary
+         result.result[0] instanceof QueryResultItemSummary // summary
    }
 
    def "Execute actor retrieve data query"()
@@ -181,7 +181,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
          result != null
          result.resultType == 'query_result_list'
          result.result.size() > 0
-         result.result[0] instanceof Locatable // summary
+         result.result[0].locatable instanceof Locatable // data
    }
 
 

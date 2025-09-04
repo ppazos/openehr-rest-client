@@ -1145,16 +1145,21 @@ class OpenEhrRestClient {
 
             def parsed_items = []
 
-            if (retrieveData)
+            if (retrieveData) // locatable results
             {
                def parser = new OpenEhrJsonParserQuick()
                parser.setSchemaFlavorAPI()
 
                response_json.result.each { item ->
-                  parsed_items << parser.parseJson(item)
+                  parsed_items << new QueryResultItemLocatable(
+                     ehrUid:      item.meta.ehr_uid,     // can be null
+                     subjectId:   item.meta.subject_id,  // can be null
+                     timeCreated: parseDate(item.meta.time_created),
+                     locatable:   parser.parseJson(item.locatable)
+                  )
                }
             }
-            else
+            else // summary results
             {
                response_json.result.each { item ->
                   if (item.type == 'COMPOSITION')
@@ -1165,7 +1170,7 @@ class OpenEhrRestClient {
                   item.timeCommitted = parseDate(item.timeCommitted)
                   item.timeCreated   = parseDate(item.timeCreated)
 
-                  parsed_items << new QueryResultItem(item)
+                  parsed_items << new QueryResultItemSummary(item)
                }
             }
 
@@ -1192,10 +1197,16 @@ class OpenEhrRestClient {
                   parser.setSchemaFlavorAPI()
 
                   items.each { item ->
-                     parsed_item_list << parser.parseJson(item)
+                     parsed_item_list << new QueryResultItemLocatable(
+                        ehrUId:      item.meta.ehr_uid,
+                        subjectId:   item.meta.subject_id,
+                        timeCreated: parseDate(item.timeCreated),
+                        locatable:   parser.parseJson(item)
+                     )
+                     //parsed_item_list << parser.parseJson(item)
                   }
 
-                  parsed_items[ehr_id] = parsed_item_list
+                  //parsed_items[ehr_id] = parsed_item_list
                }
             }
             else
@@ -1213,7 +1224,7 @@ class OpenEhrRestClient {
                      item.timeCommitted = parseDate(item.timeCommitted)
                      item.timeCreated   = parseDate(item.timeCreated)
 
-                     parsed_item_list << new QueryResultItem(item)
+                     parsed_item_list << new QueryResultItemSummary(item)
                   }
 
                   parsed_items[ehr_id] = parsed_item_list

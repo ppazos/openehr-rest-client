@@ -1,6 +1,6 @@
 package com.cabolabs.openehr.rest.client
 
-class QueryResultItem {
+class QueryResultItemSummary {
 
    // Locatable uid (object_version_id)
    String uid
