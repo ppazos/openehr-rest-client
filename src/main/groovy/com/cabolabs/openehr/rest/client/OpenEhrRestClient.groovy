@@ -3,6 +3,7 @@ package com.cabolabs.openehr.rest.client
 import com.cabolabs.openehr.rm_1_0_2.ehr.*
 import com.cabolabs.openehr.rm_1_0_2.composition.Composition
 import com.cabolabs.openehr.rm_1_0_2.demographic.*
+import com.cabolabs.openehr.rm_1_0_2.common.change_control.Version
 
 import com.cabolabs.openehr.dto_1_0_2.ehr.EhrDto
 import com.cabolabs.openehr.dto_1_0_2.demographic.*
@@ -467,6 +468,52 @@ class OpenEhrRestClient {
 
 
       return null // no compo is returned if there is an error
+   }
+
+   Version getCompositionVersion(String ehr_id, String object_id, String version_at_time)
+   {
+      Map parameters = [:]
+
+      if (version_at_time)
+      {
+         parameters['version_at_time'] = version_at_time
+      }
+
+      def queryString = parameters.collect { k, v ->
+         "${URLEncoder.encode(k.toString(), 'UTF-8')}=${URLEncoder.encode(v.toString(), 'UTF-8')}"
+      }.join('&')
+      def req = new URL("${this.baseUrl}/ehr/${ehr_id}/versioned_composition/${object_id}/version?${queryString}").openConnection()
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+      req.setRequestProperty("Accept",        this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+      // Response will always be a json string
+      String response_body = doRequest(req)
+      if (this.lastResponseCode.equals(200))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         parser.setSchemaFlavorAPI()
+         def version = parser.parseVersionJson(response_body)
+         return version
+      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
+
+      return null // no version is returned if there is an error
    }
 
    /**
@@ -1048,6 +1095,54 @@ class OpenEhrRestClient {
       return null // no compo is returned if there is an error
    }
 
+
+   Version getActorVersion(String object_id, String version_at_time)
+   {
+      Map parameters = [:]
+
+      if (version_at_time)
+      {
+         parameters['version_at_time'] = version_at_time
+      }
+
+      def queryString = parameters.collect { k, v ->
+         "${URLEncoder.encode(k.toString(), 'UTF-8')}=${URLEncoder.encode(v.toString(), 'UTF-8')}"
+      }.join('&')
+
+      def req = new URL("${this.baseUrl}/demographic/versioned_actor/${object_id}/version?${queryString}").openConnection()
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+      req.setRequestProperty("Accept", this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+      // Response will always be a json string
+      String response_body = doRequest(req)
+
+      if (this.lastResponseCode.equals(200))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         parser.setSchemaFlavorAPI()
+
+         def version = parser.parseVersionJson(response_body)
+         return version
+      }
+
+      // Expects a JSON error
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
+
+      return null // no compo is returned if there is an error
+   }
 
    // QUERY (tests)
 

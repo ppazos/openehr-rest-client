@@ -399,18 +399,22 @@ class OpenEhrRestClientMinimalTest extends Specification {
 
          def createdEhrId = client.lastResponseHeaders['ETag']
 
-         def out_composition = client.createComposition(createdEhrId, compo)
+         def outComposition = client.createComposition(createdEhrId, compo) // should be null with return=minimal
 
          def createdCompoId = client.lastResponseHeaders['ETag']
 
          // check the compo exists in the server
-         def get_composition = client.getComposition(createdEhrId, createdCompoId)
+         def getComposition = client.getComposition(createdEhrId, createdCompoId)
+
+         def getVersion = client.getCompositionVersion(createdEhrId, createdCompoId.split(':')[0], null)
 
       then:
          ehr == null // return=minimal
-         out_composition == null
-         get_composition != null
-         get_composition.uid.value == createdCompoId
+         outComposition == null
+         getComposition != null
+         getComposition.uid.value == createdCompoId
+         getVersion != null
+         getVersion.uid.value == createdCompoId
    }
 
    def "D. create and get actor"()
@@ -429,10 +433,15 @@ class OpenEhrRestClientMinimalTest extends Specification {
 
          def getPerson       = client.getActor(createPersonUid)
 
+         def getVersion      = client.getActorVersion(createPersonUid.split(':')[0], null)
+
       then:
          outPerson == null
          getPerson != null
          getPerson.uid.value == createPersonUid
+         getVersion != null
+
+         getVersion.uid.value == createPersonUid
    }
 
    def "D. create actor with role"()
