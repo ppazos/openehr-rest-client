@@ -365,6 +365,54 @@ class OpenEhrRestClient {
    }
 
 
+   EhrDto getEhrForSubject(String subject_id, String subject_namespace = 'DEMOGRAPHIC')
+   {
+      Map parameters = [:]
+
+      if (subject_id)        parameters['subject_id']        = subject_id
+      if (subject_namespace) parameters['subject_namespace'] = subject_namespace
+
+      def queryString = parameters.collect { k, v ->
+         "${URLEncoder.encode(k.toString(), 'UTF-8')}=${URLEncoder.encode(v.toString(), 'UTF-8')}"
+      }.join('&')
+
+      def req = new URL(this.baseUrl +"/ehr?${queryString}").openConnection()
+
+      req.setRequestMethod("GET")
+      req.setDoOutput(true)
+      req.setRequestProperty("Accept", this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+
+      // Response will always be a json string
+      String response_body = doRequest(req)
+
+      // NOTE: add support to detect other 2xx statuses with a warning that the spec requires 201, but it's not wrong to return 200
+      if (this.lastResponseCode.equals(200))
+      {
+         def parser = new OpenEhrJsonParserQuick()
+         def ehr = parser.parseEhrDto(response_body)
+         return ehr
+      }
+
+      // Expects a JSON error
+      // NOTE: if other 2xx code is returned, this will try to parse it as an error and is not, see note above
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
+
+      return null // no ehr is returned if there is an error
+   }
+
+
    // COMPOSITION
 
    Composition createComposition(String ehr_id, Composition compo)

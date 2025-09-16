@@ -268,7 +268,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
    {
       when:
          def subject_id = randomUUID()
-         def ehr = this.create_ehr(null, true, true, false, subject_id, null, null)
+         def ehr = this.create_ehr(null, true, true, true, subject_id, null, null)
 
       then:
          ehr == null // return=minimal
@@ -277,6 +277,23 @@ class OpenEhrRestClientMinimalTest extends Specification {
          retrievedEhr != null
 
          retrievedEhr.ehr_id.value == createdEhrId
+   }
+
+   def "A.b. get ehr for subject"()
+   {
+      when:
+         def subject_id = randomUUID()
+         def ehr = this.create_ehr(null, true, true, true, subject_id, null, null)
+
+      then:
+         ehr == null // return=minimal
+         def createdEhrId = client.lastResponseHeaders['ETag']
+         def retrievedEhr = client.getEhrForSubject(subject_id) // FIXME: should read the etag from the response because there is no body
+         retrievedEhr != null
+
+         retrievedEhr.ehr_id.value == createdEhrId
+
+         retrievedEhr.ehr_status.subject.external_ref.id.value == subject_id
    }
 
    def "B. upload template"()
