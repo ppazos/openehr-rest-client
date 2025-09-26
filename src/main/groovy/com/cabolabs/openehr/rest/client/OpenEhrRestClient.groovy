@@ -4,7 +4,7 @@ import com.cabolabs.openehr.rm_1_0_2.ehr.*
 import com.cabolabs.openehr.rm_1_0_2.composition.Composition
 import com.cabolabs.openehr.rm_1_0_2.demographic.*
 import com.cabolabs.openehr.rm_1_0_2.common.change_control.Version
-
+import com.cabolabs.openehr.rm_1_0_2.data_types.quantity.* // dv parsers
 import com.cabolabs.openehr.dto_1_0_2.ehr.EhrDto
 import com.cabolabs.openehr.dto_1_0_2.demographic.*
 
@@ -1382,6 +1382,41 @@ class OpenEhrRestClient {
                max:          response_json.pagination?.max ?: 0
             )
          }
+         else if (response_json._type == 'query_result_projections')
+         {
+            def parsed_item_list = []
+            response_json.result.each { item ->
+
+               def parsed_item_list_row = []
+               item.projections.each { projection ->
+
+                  def projection_type = projection._type
+                  def method = "parse_${projection_type}" // parse_DV_QUANTITY
+                  def dv = this."$method"(projection) // TODO: parse functions in a different class
+
+                  parsed_item_list_row << new QueryResultProjection(type: projection_type, value: dv)
+               }
+
+               parsed_item_list << new QueryResultItemProjections(
+                  projections: parsed_item_list_row,
+
+                  // meta
+                  type:      item.meta._type,
+                  ownerUid:  item.meta.ownerUid,
+                  ehrUid:    item.meta.ehrUid,
+                  subjectId: item.meta.subjectId
+               )
+            }
+
+            return new QueryResult(
+               resultType:   response_json._type,
+               result:       parsed_item_list,
+               retrieveData: false, // should be false
+               offset:       response_json.pagination?.offset ?: 0,
+               max:          response_json.pagination?.max ?: 0
+            )
+
+         }
          else
          {
             throw new Exception("Unknown query result type: ${response_json._type}")
@@ -1593,4 +1628,33 @@ class OpenEhrRestClient {
       sdf.timeZone = TimeZone.getTimeZone("UTC")
       return sdf.parse(dateStr)
    }
+
+   DvQuantity parse_DV_QUANTITY(Map dv)
+   {
+      dv.remove('_type')
+      new DvQuantity(dv)
+   }
+
+   DvProportion parse_DV_PROPORTION(Map dv)
+   {
+      dv.remove('_type')
+      new DvProportion(dv)
+   }
+
+   DvCount parse_DV_COUNT(Map dv)
+   {
+      dv.remove('_type')
+      new DvCount(dv)
+   }
+
+   DvOrdinal parse_DV_ORDINAL(Map dv)
+   {
+      dv.remove('_type')
+      new DvOrdinal(dv)
+   }
+
+   // TODO: the rest of the DVs
+   // DV_INTERVAL
+
+
 }

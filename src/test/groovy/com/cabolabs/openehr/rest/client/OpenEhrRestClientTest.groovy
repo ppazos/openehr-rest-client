@@ -377,6 +377,32 @@ class OpenEhrRestClientTest extends Specification {
    }
 
 
+   def "X1. test dv query"()
+   {
+      when:
+         QueryResult result = client.executeQuery(
+            'bb56d898-0e42-48b5-9321-f53f4fc03000',
+            [ehr_id: '01cb3295-6a0e-42ab-b744-3248ca6c6213']
+         )
+
+      then:
+         result.result.size() == 20
+
+         /*
+         result.result.each { item ->
+            item.projections.each { projection ->
+            
+               println projection.value
+            }
+         }
+         */
+
+
+      // cleanup:
+      //    // server cleanup
+      //    client.truncateServer()
+   }
+
    private def create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
    {
       def ehr
