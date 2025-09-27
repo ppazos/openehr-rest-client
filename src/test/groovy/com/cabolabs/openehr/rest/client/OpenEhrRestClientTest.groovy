@@ -388,14 +388,14 @@ class OpenEhrRestClientTest extends Specification {
       then:
          result.result.size() == 20
 
-         /*
+         
          result.result.each { item ->
             item.projections.each { projection ->
             
-               println projection.value
+               println projection.archetypeId + " " + projection.path + " " + projection.type + " " + projection.value
             }
          }
-         */
+         
 
 
       // cleanup:

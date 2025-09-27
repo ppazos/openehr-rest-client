@@ -4,9 +4,12 @@ import com.cabolabs.openehr.rm_1_0_2.ehr.*
 import com.cabolabs.openehr.rm_1_0_2.composition.Composition
 import com.cabolabs.openehr.rm_1_0_2.demographic.*
 import com.cabolabs.openehr.rm_1_0_2.common.change_control.Version
-import com.cabolabs.openehr.rm_1_0_2.data_types.quantity.* // dv parsers
 import com.cabolabs.openehr.dto_1_0_2.ehr.EhrDto
 import com.cabolabs.openehr.dto_1_0_2.demographic.*
+
+import com.cabolabs.openehr.rm_1_0_2.data_types.quantity.* // dv parsers
+import com.cabolabs.openehr.rm_1_0_2.data_types.text.*
+import com.cabolabs.openehr.rm_1_0_2.support.identification.*
 
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
@@ -1394,6 +1397,8 @@ class OpenEhrRestClient {
                   def method = "parse_${projection_type}" // parse_DV_QUANTITY
                   def dv = this."$method"(projection) // TODO: parse functions in a different class
 
+println projection
+
                   parsed_item_list_row << new QueryResultProjection(
                      type:        projection_type,
                      archetypeId: projection.archetypeId,
@@ -1676,34 +1681,41 @@ class OpenEhrRestClient {
 
    DvQuantity parse_DV_QUANTITY(Map dv)
    {
-      dv.remove('_type')
-      dv.remove('archetypeId')
-      dv.remove('path')
-      new DvQuantity(dv)
+      new DvQuantity(magnitude: dv.magnitude, units: dv.units)
    }
 
    DvProportion parse_DV_PROPORTION(Map dv)
    {
-      dv.remove('_type')
-      dv.remove('archetypeId')
-      dv.remove('path')
-      new DvProportion(dv)
+      new DvProportion(numerator: dv.numerator, denominator: dv.denominator, type: dv.type)
    }
 
    DvCount parse_DV_COUNT(Map dv)
    {
-      dv.remove('_type')
-      dv.remove('archetypeId')
-      dv.remove('path')
-      new DvCount(dv)
+      new DvCount(magnitude: dv.magnitude)
    }
 
    DvOrdinal parse_DV_ORDINAL(Map dv)
    {
-      dv.remove('_type')
-      dv.remove('archetypeId')
-      dv.remove('path')
-      new DvOrdinal(dv)
+      new DvOrdinal(
+         value: dv.value,
+         symbol: parse_DV_CODED_TEXT(dv.symbol)
+      )
+   }
+
+   DvCodedText parse_DV_CODED_TEXT(Map dv)
+   {
+      new DvCodedText(
+         value: dv.value,
+         definingCode: parse_CODE_PHRASE(dv.definingCode)
+      )
+   }
+
+   CodePhrase parse_CODE_PHRASE(Map cp)
+   {
+      new CodePhrase(
+         terminologyId: new TerminologyId(value: cp?.terminologyId?.value),
+         codeString: cp?.codeString
+      )
    }
 
    // TODO: the rest of the DVs
