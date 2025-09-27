@@ -1394,7 +1394,12 @@ class OpenEhrRestClient {
                   def method = "parse_${projection_type}" // parse_DV_QUANTITY
                   def dv = this."$method"(projection) // TODO: parse functions in a different class
 
-                  parsed_item_list_row << new QueryResultProjection(type: projection_type, value: dv)
+                  parsed_item_list_row << new QueryResultProjection(
+                     type:        projection_type,
+                     archetypeId: projection.archetypeId,
+                     path:        projection.path,
+                     value:       dv
+                  )
                }
 
                parsed_item_list << new QueryResultItemProjections(
@@ -1404,13 +1409,25 @@ class OpenEhrRestClient {
                   type:      item.meta._type,
                   ownerUid:  item.meta.ownerUid,
                   ehrUid:    item.meta.ehrUid,
-                  subjectId: item.meta.subjectId
+                  subjectId: item.meta.subjectId,
+                  timeCommitted: parseDate(item.meta.timeCommitted)
+               )
+            }
+
+            def parsedHeaders = []
+            response_json.headers.each { header ->
+               parsedHeaders << new QueryResultHeader(
+                  archetypeId: header.archetypeId,
+                  path:        header.path,
+                  name:        header.name,
+                  rmTypeName:  header.rmTypeName
                )
             }
 
             return new QueryResult(
                resultType:   response_json._type,
                result:       parsed_item_list,
+               headers:      parsedHeaders,
                retrieveData: false, // should be false
                offset:       response_json.pagination?.offset ?: 0,
                max:          response_json.pagination?.max ?: 0
@@ -1624,32 +1641,68 @@ class OpenEhrRestClient {
 
    private Date parseDate(String dateStr)
    {
-      java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-      sdf.timeZone = TimeZone.getTimeZone("UTC")
-      return sdf.parse(dateStr)
+      def tryFormats = [
+         "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", // 2024-08-24T20:20:29.123Z or 2024-08-24T20:20:29.123+00:00
+         "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", // 2024-08-24T20:20:29.123Z
+         "yyyy-MM-dd'T'HH:mm:ssXXX",     // 2024-08-24T20:20:29Z or 2024-08-24T20:20:29+00:00
+         "yyyy-MM-dd'T'HH:mm:ss'Z'"      // 2024-08-24T20:20:29Z
+      ]
+
+      for (fmt in tryFormats)
+      {
+         try
+         {
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat(fmt)
+            if (fmt.endsWith("XXX"))
+            {
+               return sdf.parse(dateStr)
+            }
+            else
+            {
+               sdf.timeZone = TimeZone.getTimeZone("UTC")
+               return sdf.parse(dateStr)
+            }
+         }
+         catch (Exception e)
+         {
+            // try next
+         }
+      }
+
+      // java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+      // sdf.timeZone = TimeZone.getTimeZone("UTC")
+      // return sdf.parse(dateStr)
    }
 
    DvQuantity parse_DV_QUANTITY(Map dv)
    {
       dv.remove('_type')
+      dv.remove('archetypeId')
+      dv.remove('path')
       new DvQuantity(dv)
    }
 
    DvProportion parse_DV_PROPORTION(Map dv)
    {
       dv.remove('_type')
+      dv.remove('archetypeId')
+      dv.remove('path')
       new DvProportion(dv)
    }
 
    DvCount parse_DV_COUNT(Map dv)
    {
       dv.remove('_type')
+      dv.remove('archetypeId')
+      dv.remove('path')
       new DvCount(dv)
    }
 
    DvOrdinal parse_DV_ORDINAL(Map dv)
    {
       dv.remove('_type')
+      dv.remove('archetypeId')
+      dv.remove('path')
       new DvOrdinal(dv)
    }
 

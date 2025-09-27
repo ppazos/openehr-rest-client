@@ -11,4 +11,8 @@ class QueryResultItemProjections {
    String ownerUid  // container object uid
    String subjectId // only for EHR classes
    String ehrUid    // only for EHR classes
+
+   // TODO: we need a timestamp for rendering this info.
+   Date timeCommitted
+
 }

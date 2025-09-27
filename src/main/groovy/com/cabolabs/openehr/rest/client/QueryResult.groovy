@@ -2,6 +2,8 @@ package com.cabolabs.openehr.rest.client
 
 class QueryResult {
 
+   def headers // only for prpojections: archetypeId, path, name, rmTypeName
+
    // the result of the query, can be a list or a map for 'query_result_list' or 'query_result_grouped' respectively.
    // the items will be summaries or the full object if retrieveData was set
    def result

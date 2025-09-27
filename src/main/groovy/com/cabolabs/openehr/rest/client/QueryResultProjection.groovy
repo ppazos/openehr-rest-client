@@ -7,7 +7,15 @@ class QueryResultProjection {
 
     String type // dv
 
+    // NOTE: all these could be in a headers structure instead of inside each
+    // individual datatype, though the issue is if we miss some types of values
+    // from some rows, maybe because of null_favours.
+
     // TODO: we can have the archetype and path here
+    // We also need the name because we don't know what the data represents
 
     DataValue value
+
+    String archetypeId
+    String path
 }
