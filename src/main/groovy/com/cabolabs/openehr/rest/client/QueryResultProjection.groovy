@@ -14,7 +14,7 @@ class QueryResultProjection {
     // TODO: we can have the archetype and path here
     // We also need the name because we don't know what the data represents
 
-    DataValue value
+    Object value // We need to set Object because this can be DataValue or String which is not a DV.
 
     String archetypeId
     String path

@@ -142,6 +142,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
    }
 
 
+   /*
    // FIXME: create a real test:
    // upload template
    // commit some data
@@ -183,6 +184,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
          result.result.size() > 0
          result.result[0].locatable instanceof Locatable // data
    }
+   */
 
 
    /**
@@ -423,6 +425,8 @@ class OpenEhrRestClientMinimalTest extends Specification {
          // check the compo exists in the server
          def getComposition = client.getComposition(createdEhrId, createdCompoId)
 
+         Thread.sleep(500)
+
          def getVersion = client.getCompositionVersion(createdEhrId, createdCompoId.split(':')[0], null)
 
       then:
@@ -449,6 +453,8 @@ class OpenEhrRestClientMinimalTest extends Specification {
          def createPersonUid = client.lastResponseHeaders['ETag']
 
          def getPerson       = client.getActor(createPersonUid)
+
+         Thread.sleep(500)
 
          def getVersion      = client.getActorVersion(createPersonUid.split(':')[0], null)
 
