@@ -1792,6 +1792,11 @@ class OpenEhrRestClient {
       )
    }
 
+   String parse_String(Map dv)
+   {
+      new String(dv.value)
+   }
+
 
    // TODO: the rest of the DVs
    // DV_INTERVAL
