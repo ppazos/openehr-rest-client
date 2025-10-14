@@ -1724,8 +1724,8 @@ class OpenEhrRestClient {
    CodePhrase parse_CODE_PHRASE(Map cp)
    {
       new CodePhrase(
-         terminologyId: new TerminologyId(value: cp?.terminologyId?.value),
-         codeString: cp?.codeString
+         terminologyId: new TerminologyId(value: cp?.terminology_id?.value),
+         codeString: cp?.code_string
       )
    }
 

@@ -187,6 +187,24 @@ class OpenEhrRestClientMinimalTest extends Specification {
    */
 
 
+   def "Execute role data query"()
+   {
+      when:
+         def query_id = "b81ce907-4007-480e-b389-5376092da547"
+         def parameters = [
+            '$profesional_cua_performer_value': '4b4f1bc3-0ee1-4605-b333-701092e24dee'
+         ]
+
+         def result = client.executeQuery(query_id, parameters)
+
+      then:
+         result != null
+         result.resultType == 'query_result_list'
+         result.result.size() > 0
+         result.result[0].locatable instanceof Locatable // data
+   }
+
+
    /**
     * Test EHR creation with all possible combinations of valid EHR_STATUS.
     * This test case doesn't focus on data validation against OPT constraints.
