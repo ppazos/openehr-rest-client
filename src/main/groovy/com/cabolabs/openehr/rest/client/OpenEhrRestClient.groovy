@@ -1717,7 +1717,7 @@ class OpenEhrRestClient {
    {
       new DvCodedText(
          value: dv.value,
-         definingCode: parse_CODE_PHRASE(dv.definingCode)
+         defining_code: parse_CODE_PHRASE(dv.defining_code)
       )
    }
 
