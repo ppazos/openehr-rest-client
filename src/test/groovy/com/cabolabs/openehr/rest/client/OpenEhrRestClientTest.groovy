@@ -376,7 +376,8 @@ class OpenEhrRestClientTest extends Specification {
       //    client.truncateServer()
    }
 
-
+   /* FIXME: this test depends on a specific query being present in the server, we should upload the opt,
+      create the query, commit some data and then test it.
    def "X1. test dv query"()
    {
       when:
@@ -402,6 +403,7 @@ class OpenEhrRestClientTest extends Specification {
       //    // server cleanup
       //    client.truncateServer()
    }
+   */
 
    private def create_ehr(data_set_no, is_queryable, is_modifiable, has_status, subject_id, other_details, ehr_id)
    {

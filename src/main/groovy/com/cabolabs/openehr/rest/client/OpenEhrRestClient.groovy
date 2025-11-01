@@ -526,10 +526,8 @@ class OpenEhrRestClient {
       return null // no compo is returned if there is an error
    }
 
-   Version getCompositionVersion(String ehr_id, String object_id, String version_at_time)
+   Version getCompositionVersion(String ehr_id, String object_id, String version_at_time, Map parameters = [:])
    {
-      Map parameters = [:]
-
       if (version_at_time)
       {
          parameters['version_at_time'] = version_at_time
@@ -1152,10 +1150,8 @@ class OpenEhrRestClient {
    }
 
 
-   Version getActorVersion(String object_id, String version_at_time)
+   Version getActorVersion(String object_id, String version_at_time, Map parameters = [:])
    {
-      Map parameters = [:]
-
       if (version_at_time)
       {
          parameters['version_at_time'] = version_at_time
@@ -1204,7 +1200,7 @@ class OpenEhrRestClient {
 
    def storeQuery(String qualified_name, String version, String type, String query)
    {
-
+      // TODO
    }
 
    List listQueries()
