@@ -16,6 +16,8 @@ import com.cabolabs.openehr.rm_1_0_2.data_types.uri.*
 
 import com.cabolabs.openehr.rm_1_0_2.support.identification.*
 
+import com.cabolabs.openehr.rm_1_0_2.common.archetyped.Locatable
+
 import groovy.json.JsonSlurper
 import groovy.json.JsonOutput
 import groovy.util.logging.*
@@ -943,7 +945,7 @@ class OpenEhrRestClient {
 
          // TODO:
          // resolveRefs will try to parse the DTO in the data
-         // if (!parameters.resolveRefs)
+         // if (parameters.resolveRefs)
          // {
          //    parser.setSchemaFlavorAPI()
          // }
@@ -1120,7 +1122,8 @@ class OpenEhrRestClient {
    executeStoredQuery
    */
 
-   ActorDto getActor(String version_uid, Map parameters = [:])
+   /* ActorDto or Actor, depending on the resolveRefs parameter */
+   Locatable getActor(String version_uid, Map parameters = [:])
    {
       def queryString = parameters.collect { k, v ->
          "${URLEncoder.encode(k.toString(), 'UTF-8')}=${URLEncoder.encode(v.toString(), 'UTF-8')}"
@@ -1143,7 +1146,7 @@ class OpenEhrRestClient {
          def parser = new OpenEhrJsonParserQuick()
 
          // resolveRefs will try to parse the DTO in the data
-         if (!parameters.resolveRefs)
+         if (parameters.resolveRefs)
          {
             parser.setSchemaFlavorAPI()
          }
@@ -1196,7 +1199,7 @@ class OpenEhrRestClient {
          def parser = new OpenEhrJsonParserQuick()
 
          // resolveRefs will try to parse the DTO in the data
-         if (!parameters.resolveRefs)
+         if (parameters.resolveRefs)
          {
             parser.setSchemaFlavorAPI()
          }
