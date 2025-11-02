@@ -899,6 +899,8 @@ class OpenEhrRestClient {
       return null // no compo is returned if there is an error
    }
 
+   // TODO: might need to change the return type to locatable since depending on the resolve_refs header, it might return the PRDTO
+   //       same with the other createXXX
    PartyRelationship createRelationship(PartyRelationship relationship)
    {
       def req = new URL("${this.baseUrl}/demographic/relationship").openConnection()
@@ -938,6 +940,14 @@ class OpenEhrRestClient {
       if (this.lastResponseCode.equals(201))
       {
          def parser = new OpenEhrJsonParserQuick()
+
+         // TODO:
+         // resolveRefs will try to parse the DTO in the data
+         // if (!parameters.resolveRefs)
+         // {
+         //    parser.setSchemaFlavorAPI()
+         // }
+
          parser.setSchemaFlavorAPI()
 
          def out = parser.parseJson(response_body)
@@ -1028,7 +1038,6 @@ class OpenEhrRestClient {
       return null // no compo is returned if there is an error
    }
 
-
    RoleDto createRole(RoleDto role, String performerObjectId)
    {
       def req = new URL("${this.baseUrl}/demographic/actor/${performerObjectId}/role").openConnection()
@@ -1111,9 +1120,13 @@ class OpenEhrRestClient {
    executeStoredQuery
    */
 
-   ActorDto getActor(String version_uid)
+   ActorDto getActor(String version_uid, Map parameters = [:])
    {
-      def req = new URL("${this.baseUrl}/demographic/actor/${version_uid}").openConnection()
+      def queryString = parameters.collect { k, v ->
+         "${URLEncoder.encode(k.toString(), 'UTF-8')}=${URLEncoder.encode(v.toString(), 'UTF-8')}"
+      }.join('&')
+
+      def req = new URL("${this.baseUrl}/demographic/actor/${version_uid}?${queryString}").openConnection()
 
       req.setRequestMethod("GET")
       req.setDoOutput(true)
@@ -1128,7 +1141,12 @@ class OpenEhrRestClient {
       if (this.lastResponseCode.equals(200))
       {
          def parser = new OpenEhrJsonParserQuick()
-         parser.setSchemaFlavorAPI()
+
+         // resolveRefs will try to parse the DTO in the data
+         if (!parameters.resolveRefs)
+         {
+            parser.setSchemaFlavorAPI()
+         }
 
          def actor_out = parser.parseJson(response_body) //parser.parseActorDto(response_body) // NOTE: parseJson doesn't work with the ActorDto
          return actor_out
@@ -1176,7 +1194,12 @@ class OpenEhrRestClient {
       if (this.lastResponseCode.equals(200))
       {
          def parser = new OpenEhrJsonParserQuick()
-         parser.setSchemaFlavorAPI()
+
+         // resolveRefs will try to parse the DTO in the data
+         if (!parameters.resolveRefs)
+         {
+            parser.setSchemaFlavorAPI()
+         }
 
          def version = parser.parseVersionJson(response_body)
          return version
