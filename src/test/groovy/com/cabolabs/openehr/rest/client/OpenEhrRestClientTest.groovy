@@ -191,7 +191,7 @@ class OpenEhrRestClientTest extends Specification {
 
       then:
          ehr == null
-         myclient.lastError.status == "error"
+         myclient.lastError.type == "ERROR"
          myclient.lastError.message == "The host is unreachable: wrongurl6699.com"
          //thrown(java.net.UnknownHostException)
    }
@@ -211,7 +211,7 @@ class OpenEhrRestClientTest extends Specification {
 
       then:
          ehr == null
-         myclient.lastError.status == "error"
+         myclient.lastError.type == "ERROR"
          myclient.lastError.message == "Connection refused (Connection refused)"
          //thrown(java.net.ConnectException)
    }
@@ -232,7 +232,7 @@ class OpenEhrRestClientTest extends Specification {
       then:
          ehr == null
          myclient.lastResponseCode == 500
-         myclient.lastError.status == "error"
+         //myclient.lastError.status == "error"
    }
 
    def "A.a. get ehr"()
@@ -257,7 +257,7 @@ class OpenEhrRestClientTest extends Specification {
       then:
          if (!result)
          {
-            client.lastError.status == 'error'
+            client.lastError.type == 'ERROR'
             if (client.lastError.message == 'Conflict: template already exists')
             {
                // This one is accepted, means the template already exists on the server
@@ -290,7 +290,7 @@ class OpenEhrRestClientTest extends Specification {
          myclient.uploadTemplate(opt)
 
       then:
-         myclient.lastError.status == 'error'
+         myclient.lastError.type == 'ERROR'
    }
 
    def "B.2. upload template no connection"()
@@ -308,7 +308,7 @@ class OpenEhrRestClientTest extends Specification {
          myclient.uploadTemplate(opt)
 
       then:
-         myclient.lastError.status == 'error'
+         myclient.lastError.type == 'ERROR'
    }
 
    def "B.a. get templates"()

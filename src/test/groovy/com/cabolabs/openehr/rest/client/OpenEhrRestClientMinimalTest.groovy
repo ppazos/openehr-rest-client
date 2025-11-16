@@ -186,6 +186,25 @@ class OpenEhrRestClientMinimalTest extends Specification {
    }
    */
 
+   def "Execute actor retrieve data query error"()
+   {
+      when:
+         def query_id = "7a9b6079-b9ce-4c6a-9315-3fb0ee2db397"
+         def parameters = [
+            '$primer_nombre_value_valuexxxxx': 'pau',
+            '$primer_apellido_value_value': 'pau',
+            'retrieveData': true
+         ]
+
+         def result = client.executeQuery(query_id, parameters)
+
+      then:
+         result == null
+         client.lastError.type == 'ERROR'
+         client.lastError.message.contains('Given variables [primer_nombre_value_valuexxxxx] are not in the query variables')
+   }
+   
+
 
    /* FIXME: this test depends on a specific query being present in the server, we should upload the opt,
       create the query, commit some data and then test it.
@@ -243,7 +262,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
 
       then:
          ehr == null
-         myclient.lastError.status == "error"
+         myclient.lastError.type == "ERROR"
          myclient.lastError.message == "The host is unreachable: wrongurl6699.com"
          //thrown(java.net.UnknownHostException)
    }
@@ -263,7 +282,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
 
       then:
          ehr == null
-         myclient.lastError.status == "error"
+         myclient.lastError.type == "ERROR"
          myclient.lastError.message == "Connection refused (Connection refused)"
          //thrown(java.net.ConnectException)
    }
@@ -284,7 +303,10 @@ class OpenEhrRestClientMinimalTest extends Specification {
       then:
          ehr == null
          myclient.lastResponseCode == 500
-         myclient.lastError.status == "error"
+
+         // NOTE: we don't control the response so the error comes from the service used to generate the 500,
+         //       and it has status="error" instead of type="ERROR"
+         //myclient.lastError.type == "ERROR"
    }
 
    def "A.a. get ehr"()
@@ -328,7 +350,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
       then:
          if (!result)
          {
-            client.lastError.status == 'error'
+            client.lastError.type == 'ERROR'
             if (client.lastError.message == 'Conflict: template already exists')
             {
                // This one is accepted, means the template already exists on the server
@@ -361,7 +383,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
          myclient.uploadTemplate(opt)
 
       then:
-         myclient.lastError.status == 'error'
+         myclient.lastError.type == 'ERROR'
    }
 
    def "B.2. upload template no connection"()
@@ -384,7 +406,7 @@ class OpenEhrRestClientMinimalTest extends Specification {
          println myclient.lastResponseHeaders
 
       then:
-         myclient.lastError.status == 'error'
+         myclient.lastError.type == 'ERROR'
    }
 
    def "B.a. get templates"()

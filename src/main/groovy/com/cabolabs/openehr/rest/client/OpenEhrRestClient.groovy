@@ -689,7 +689,7 @@ class OpenEhrRestClient {
       else if (this.lastResponseCode.equals(409)) // Conflict
       {
          // NOTE: this is more a warning than an error
-         this.lastError = [status: 'error', message: "Conflict: template already exists"]
+         this.lastError = [type: 'ERROR', message: "Conflict: template already exists"]
       }
       else
       {
@@ -1119,7 +1119,6 @@ class OpenEhrRestClient {
    getContribution
    getVersionedComposition
    ...
-   executeStoredQuery
    */
 
    /* ActorDto or Actor, depending on the resolveRefs parameter */
@@ -1477,6 +1476,19 @@ class OpenEhrRestClient {
          // return locatable_out
       }
 
+      
+      // Expects a JSON error
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
+
+      return null
    }
 
    // TODO: execute ad-hoc query
@@ -1559,7 +1571,7 @@ class OpenEhrRestClient {
          def message = JsonOutput.toJson(e.getMessage())[1..-2] // Remove first and last quote // escape
 
          response_body = """{
-            \"status\": \"error\",
+            \"type\": \"ERROR\",
             \"context\": \"This is an 'unknown host' error, check the host is correct\",
             \"message\": \"The host is unreachable: ${message}\"
          }"""
@@ -1576,7 +1588,7 @@ class OpenEhrRestClient {
          def message = JsonOutput.toJson(e.getMessage()) // escape
 
          response_body = """{
-            \"status\": \"error\",
+            \"type\": \"ERROR\",
             \"context\": \"This is a network related error, it's probable the connection couldn't be established\",
             \"message\": ${message}
          }"""
@@ -1596,7 +1608,7 @@ class OpenEhrRestClient {
          e.printStackTrace()
 
          response_body = """{
-            \"status\": \"error\",
+            \"type\": \"ERROR\",
             \"context\": \"This is a generic error handler\",
             \"message\": ${message}
          }"""
@@ -1605,7 +1617,6 @@ class OpenEhrRestClient {
 
          return response_body
       }
-
 
       /*
       // Will have response code only if the connection was established
@@ -1645,7 +1656,7 @@ class OpenEhrRestClient {
                def message = JsonOutput.toJson(response_body) // escape
 
                response_body = """{
-                  \"status\": \"error\",
+                  \"type\": \"ERROR\",
                   \"context\": \"We got a response from the server but it's not in the expected format\",
                   \"message\": ${message}
                }"""
