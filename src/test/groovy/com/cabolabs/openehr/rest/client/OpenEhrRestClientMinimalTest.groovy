@@ -701,6 +701,91 @@ class OpenEhrRestClientMinimalTest extends Specification {
    }
 
 
+   def "import query"()
+   {
+      when:
+         String query_json = """
+         {
+            "uid": "${randomUUID()}",
+            "name": "rest client test query",
+            "description": "test",
+            "resultType": "composition",
+            "isCount": false,
+            "anyVersion": null,
+            "where": {
+               "_type": "CriteriaDvDateTime",
+               "templateId": "Blood Pressure",
+               "archetypeId": "openEHR-EHR-OBSERVATION.blood_pressure.v2",
+               "path": "/data[at0001]/origin",
+               "rmTypeName": "DV_DATE_TIME",
+               "name": "History.origin",
+               "isExists": false,
+               "allowAnyArchetypeVersion": false,
+               "valueCriteria": {
+                  "_type": "CriteriaDateTimeMonthsAgo",
+                  "referenceValues": [
+                     2
+                  ],
+                  "variables": [
+                     
+                  ],
+                  "operator": "gt"
+               }
+            }
+         }
+         """
+
+         def result = client.importQuery(query_json)
+
+      then:
+         client.getLastResponseCode() == 204
+         result == null
+         client.lastResponseHeaders['ETag'] != null
+   }
+
+   def "import query invalid"()
+   {
+      when:
+         String query_json = """
+         {
+            "uid": "${randomUUID()}",
+            "name": "rest client test query",
+            "xxx": "test",
+            "resultType": "composition",
+            "isCount": false,
+            "anyVersion": null,
+            "where": {
+               "_type": "CriteriaDvDateTime",
+               "templateId": "Blood Pressure",
+               "archetypeId": "openEHR-EHR-OBSERVATION.blood_pressure.v2",
+               "path": "/data[at0001]/origin",
+               "rmTypeName": "DV_DATE_TIME",
+               "name": "History.origin",
+               "isExists": false,
+               "allowAnyArchetypeVersion": false,
+               "valueCriteria": {
+                  "_type": "CriteriaDateTimeMonthsAgo",
+                  "referenceValues": [
+                     2
+                  ],
+                  "variables": [
+                     
+                  ],
+                  "operator": "gt"
+               }
+            }
+         }
+         """
+
+         def result = client.importQuery(query_json)
+
+      then:
+         client.getLastResponseCode() == 400
+         result == null
+         client.lastResponseHeaders['ETag'] == null
+         assert client.lastError.message.startsWith("Query JSON schema validation failed: \$.description: is missing")
+   }
+
    // TODO: these two 'tests' should really be data load scripts that use the rest client, maybe putting them in loadEHR
    /*
    def "LOAD. create composition minimal evaluation 100 times"()

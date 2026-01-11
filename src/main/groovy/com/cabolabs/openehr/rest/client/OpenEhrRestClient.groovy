@@ -1223,7 +1223,48 @@ class OpenEhrRestClient {
 
    // QUERY (tests)
 
-   def storeQuery(String qualified_name, String version, String type, String query)
+   def importQuery(String json_query)
+   {
+      def req = new URL("${this.baseUrl}/query/import").openConnection()
+
+      req.setRequestMethod("POST")
+      req.setDoOutput(true)
+
+      // NOTE: JSON only requests for now
+      req.setRequestProperty("Content-Type",  "application/json")
+      req.setRequestProperty("Prefer",        this.prefer.toString())
+      req.setRequestProperty("Accept",        this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req) 
+
+      String response_body = doRequest(req, json_query)
+
+      if (this.lastResponseCode.equals(201))
+      {
+         def json_parser = new JsonSlurper()
+         return json_parser.parseText(response_body)
+      }
+      else if (this.lastResponseCode.equals(204)) // return=minimal
+      {
+         return null
+      }
+
+      // Expects a JSON error
+      if (this.lastConnectionProblem || this.lastResponseHeaders['Content-Type']?.startsWith('application/json'))
+      {
+         def json_parser = new JsonSlurper()
+         this.lastError = json_parser.parseText(response_body)
+      }
+      else
+      {
+         println "No json errors "+ response_body
+      }
+
+      return null // no compo is returned if there is an error
+   }
+
+   def getQuery(String query_uid)
    {
       // TODO
    }
@@ -1543,6 +1584,7 @@ class OpenEhrRestClient {
          }
          else
          {
+            // FIXME: don't do if the response is 204 No Content
             // this throws an exception if the response status code is not 2xx
             response_body = connection.getInputStream().getText()
          }
@@ -1557,6 +1599,7 @@ class OpenEhrRestClient {
 
          lastResponseHeaders['ETag'] = responseHeaders['ETag'] ? responseHeaders['ETag'][0] : null // NOTE: depending on the server, this chould be null
          lastResponseHeaders['Last-Modified'] = responseHeaders['Last-Modified'] ?: null // NOTE: this could also be null
+         // TODO: also add Location for POST that creates resources
 
          if (responseHeaders['Content-Type'])
          {
