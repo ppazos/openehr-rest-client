@@ -616,7 +616,7 @@ class OpenEhrRestClient {
 
 
       // Response will always be a json string
-      String response_body = doRequest(req. body)
+      String response_body = doRequest(req, body)
 
       // NOTE: the openEHR API responds 200 for updates
       // TODO: need to check for other 2xx codes and report a warning since it's not strictly compliant
