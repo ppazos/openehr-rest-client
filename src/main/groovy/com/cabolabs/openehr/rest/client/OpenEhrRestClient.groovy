@@ -1338,6 +1338,41 @@ class OpenEhrRestClient {
       // Response will always be a json string
       String response_body = doRequest(req)
 
+      return parseQueryResultResponse(response_body)
+   }
+
+   // Ad-hoc (transient) AQL query: sent and executed directly against the server,
+   // without needing a query stored/registered there beforehand (see executeQuery).
+   QueryResult executeAdhocQuery(String aql, Map query_parameters = [:], int max = 20, int offset = 0)
+   {
+      def payload = [
+         q:                aql,
+         fetch:            max,
+         offset:           offset,
+         query_parameters: query_parameters
+      ]
+
+      def body = JsonOutput.toJson(payload)
+
+      def req = new URL("${this.baseUrl}/query/aql").openConnection()
+
+      req.setRequestMethod("POST")
+      req.setDoOutput(true)
+
+      req.setRequestProperty("Content-Type", "application/json")
+      req.setRequestProperty("Accept",       this.accept.toString())
+
+      // makes the authenticaiton magic over the current request
+      this.auth.apply(req)
+
+      String response_body = doRequest(req, body)
+
+      return parseQueryResultResponse(response_body)
+   }
+
+   // Shared response parsing for both stored (executeQuery) and ad-hoc (executeAdhocQuery) AQL execution.
+   private QueryResult parseQueryResultResponse(String response_body)
+   {
       if (this.lastResponseCode.equals(200))
       {
          def json_parser = new JsonSlurper()
@@ -1461,8 +1496,9 @@ class OpenEhrRestClient {
                item.projections.each { projection ->
 
                   def projection_type = projection._type
-                  def method = "parse_${projection_type}" // parse_DV_QUANTITY
-                  def dv = this."$method"(projection) // TODO: parse functions in a different class
+                  // A path can legitimately resolve to nothing (e.g. an optional field
+                  // never set on that instance) — the server returns a typeless/null projection.
+                  def dv = projection_type ? this."parse_${projection_type}"(projection) : null // TODO: parse functions in a different class
 
                   // println projection
 
@@ -1531,8 +1567,6 @@ class OpenEhrRestClient {
 
       return null
    }
-
-   // TODO: execute ad-hoc query
 
    static String removeBOM(byte[] bytes)
    {
