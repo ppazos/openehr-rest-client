@@ -12,12 +12,23 @@ plugins {
 
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
+
+    id 'maven-publish'
+}
+
+group   = 'com.github.ppazos'
+version = '0.4.5'
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
 }
 
 repositories {
-    // Use jcenter for resolving dependencies.
-    // You can declare any Maven/Ivy/file repository here.
-    jcenter()
+    mavenCentral()
     maven { url 'https://www.jitpack.io' }
 }
 
@@ -28,7 +39,7 @@ dependencies {
     // Use the awesome Spock testing and specification framework
     testImplementation 'org.spockframework:spock-core:2.3-groovy-3.0'
 
-    implementation 'com.github.CaboLabs:openEHR-SDK:v2.2.13'
+    implementation 'com.github.CaboLabs:openEHR-SDK:2.5.2'
 
     //implementation 'log4j:log4j:1.2.17'
     //implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.23.1'
