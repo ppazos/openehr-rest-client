@@ -1338,7 +1338,10 @@ class OpenEhrRestClient {
       // Response will always be a json string
       String response_body = doRequest(req)
 
-      return parseQueryResultResponse(response_body)
+      // retrieveData is a request parameter ("true" as a String when it comes from a Map<String, String>)
+      boolean retrieveData = parameters.retrieveData?.toString()?.equalsIgnoreCase('true') ?: false
+
+      return parseQueryResultResponse(response_body, retrieveData)
    }
 
    // Ad-hoc (transient) AQL query: sent and executed directly against the server,
@@ -1367,11 +1370,12 @@ class OpenEhrRestClient {
 
       String response_body = doRequest(req, body)
 
-      return parseQueryResultResponse(response_body)
+      return parseQueryResultResponse(response_body, false)
    }
 
    // Shared response parsing for both stored (executeQuery) and ad-hoc (executeAdhocQuery) AQL execution.
-   private QueryResult parseQueryResultResponse(String response_body)
+   // retrieveData comes from the caller: it is the executeQuery() request parameter, so it can't be read here.
+   private QueryResult parseQueryResultResponse(String response_body, boolean retrieveData)
    {
       if (this.lastResponseCode.equals(200))
       {
@@ -1389,8 +1393,6 @@ class OpenEhrRestClient {
          }
          else if (response_json._type == 'query_result_list')
          {
-            boolean retrieveData = parameters.retrieveData ?: false
-
             def parsed_items = []
 
             if (retrieveData) // locatable results
@@ -1432,8 +1434,6 @@ class OpenEhrRestClient {
          }
          else if (response_json._type == 'query_result_grouped')
          {
-            boolean retrieveData = parameters.retrieveData ?: false
-
             def parsed_items = [:] // ehr_id -> list of items
 
             if (retrieveData)
