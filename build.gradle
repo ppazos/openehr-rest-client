@@ -17,7 +17,7 @@ plugins {
 }
 
 group   = 'com.github.ppazos'
-version = '0.4.8'
+version = '0.4.9'
 
 publishing {
     publications {
