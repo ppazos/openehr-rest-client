@@ -38,7 +38,9 @@ class CustomAuth extends Authentication {
       req.setRequestMethod("POST")
       req.setDoOutput(true)
 
-      String body = "email=${this.username}&password=${this.password}"
+      // form values must be URL-encoded: a "+" in the email (e.g. name+tag@mail.com) would be read as a space, and
+      // "&", "=", "%" or "+" in the password would break the form
+      String body = "email=${URLEncoder.encode(this.username, 'UTF-8')}&password=${URLEncoder.encode(this.password, 'UTF-8')}"
       req.getOutputStream().write(body.getBytes("UTF-8"));
       //req.setRequestProperty("Content-Length", Integer.toString(body_bytes.length))
 
